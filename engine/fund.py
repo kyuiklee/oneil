@@ -225,6 +225,7 @@ def load(codes):
     if not key:
         print("DART_API_KEY 없음 — 실적 조건(C·A) 없이 실행")
         return None
+    print(f"DART 키 확인: 길이 {len(key)}자 (정상은 40자)")
     try:
         raw = load_raw(codes, key)
     except Exception as e:
