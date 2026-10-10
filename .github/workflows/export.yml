@@ -1,0 +1,29 @@
+name: 분석용 데이터 내보내기
+
+# 수동 실행 전용: 배포된 앱 데이터를 data-export 브랜치에 저장 (분석용, 매번 덮어씀)
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 앱 데이터 받기
+        run: |
+          mkdir out && cd out
+          for f in today.json trades.json bench.json; do
+            curl -sfL "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/data/$f?t=$(date +%s)" -o "$f"
+          done
+          ls -la
+      - name: data-export 브랜치에 저장
+        run: |
+          cd out
+          git init -q -b data-export
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add -A
+          git commit -q -m "분석용 데이터 $(date -u +%F)"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" data-export

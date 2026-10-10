@@ -1,0 +1,26 @@
+{
+  "min_price": 2000,
+  "min_amount_eok": 20,
+  "min_rs": 70,
+  "top_n": 10,
+  "store_n": 15,
+
+  "base_len": 35,
+  "min_base_days": 10,
+  "min_depth": 8,
+  "max_depth": 35,
+  "max_ext": 5,
+  "min_vol": 1.4,
+  "max_off_hi": 15,
+
+  "pb_min_rs": 80,
+  "pb_touch": 2,
+  "pb_max_vol": 1.0,
+  "pb_max_off_hi": 25,
+
+  "stop_pct": 7,
+  "target_pct": 20,
+  "hold_max": 60,
+  "fee_pct": 0.25,
+  "backtest_days": 500
+}
