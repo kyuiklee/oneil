@@ -161,8 +161,15 @@ def main():
     }
     bench = {k.lower(): [[f"{d:%Y-%m-%d}", r2(v)] for d, v in s.items() if d >= days.min()] for k, s in idx.items()}
 
+    # ----- 전 종목 최종일 종가 (내 전략 '실제 보유' 평가용) -----
+    last = F[F.index == trade_day]
+    prices = {"date": f"{trade_day:%Y-%m-%d}",
+              "note": "p = {종목코드: [종가, 등락률%, 종목명, 시장 K/Q]}",
+              "p": {r.code: [int(r.close), r2(r.chg), str(meta["name"].get(r.code, "")),
+                             "Q" if meta["market"].get(r.code) == "KOSDAQ" else "K"] for r in last.itertuples()}}
+
     os.makedirs(OUT, exist_ok=True)
-    for name, obj in (("today.json", today), ("trades.json", trades), ("bench.json", bench)):
+    for name, obj in (("today.json", today), ("trades.json", trades), ("bench.json", bench), ("prices.json", prices)):
         with open(os.path.join(OUT, name), "w", encoding="utf-8") as f:
             json.dump(obj, f, ensure_ascii=False, separators=(",", ":"))
     nb = sum(1 for x in today["cands"] if x["type"] == "B")
