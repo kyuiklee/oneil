@@ -4,7 +4,7 @@
 - 연결재무제표가 있으면 연결, 없으면 별도
 - 이익은 EPS 대신 당기순이익 증가율을 씀 (주식 수 변화가 크지 않다는 가정)
 """
-import os, io, time, gzip, pickle, zipfile
+import os, io, re, time, gzip, pickle, zipfile
 import xml.etree.ElementTree as ET
 from concurrent.futures import ThreadPoolExecutor
 import numpy as np
@@ -17,6 +17,13 @@ API = "https://opendart.fss.or.kr/api"
 REPRTS = ("11013", "11012", "11014", "11011")          # 1분기, 반기, 3분기, 사업보고서
 Q_END = {"11013": (3, 31), "11012": (6, 30), "11014": (9, 30), "11011": (12, 31)}
 COLS = ["cg", "cgp", "sg", "og", "ogp", "opm", "opm_d", "ag", "roe", "ql"]
+
+
+def _safe(e):
+    """오류 메시지에서 DART 인증키 가리기 (실행 기록이 저장소에 올라가므로)"""
+    s = re.sub(r"crtfc_key=[^&\s'\"]+", "crtfc_key=***", str(e))
+    k = os.environ.get("DART_API_KEY", "").strip()
+    return s.replace(k, "***") if k else s
 
 
 def _num(s):
@@ -111,7 +118,7 @@ def load_raw(codes, key, refresh_hours=20):
         try:
             cache["corp"], cache["corp_at"] = corp_codes(key), now
         except Exception as e:
-            print(f"DART 회사코드 실패: {e}")
+            print(f"DART 회사코드 실패: {_safe(e)}")
             if not cache.get("corp"):
                 return None
     corp = cache["corp"]
@@ -138,7 +145,7 @@ def load_raw(codes, key, refresh_hours=20):
             with ThreadPoolExecutor(3) as ex:
                 res = list(ex.map(lambda b: _fetch(key, b, k[0], k[1]), batches))
         except Limit as e:
-            print(f"DART 하루 요청 한도 초과 — 받은 데까지만 사용: {e}")
+            print(f"DART 하루 요청 한도 초과 — 받은 데까지만 사용: {_safe(e)}")
             break
         if any(r is None for r in res):
             print(f"  {k} 일부 실패 — 다음 실행 때 다시 받음")
@@ -250,7 +257,7 @@ def load(codes):
     try:
         raw = load_raw(codes, key)
     except Exception as e:
-        print(f"DART 실패: {e}")
+        print(f"DART 실패: {_safe(e)}")
         return None
     if not raw:
         return None

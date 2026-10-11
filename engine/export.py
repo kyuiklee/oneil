@@ -8,7 +8,7 @@
 - 지표: 최근 3개월 수출액 합계의 전년 동기 대비 증가율(xg)과 한 달 전 같은 값(xgp) → 둘을 비교해 수출 가속 판단
 - 월간 확정치는 다음 달 15일 무렵 공표되므로, 그달 수치는 다음 달 16일부터 쓴다 (미래 정보가 섞이지 않게)
 """
-import os, time, gzip, json, pickle
+import os, re, time, gzip, json, pickle
 import xml.etree.ElementTree as ET
 from concurrent.futures import ThreadPoolExecutor
 from urllib.parse import unquote
@@ -34,12 +34,21 @@ def _key():
     return unquote(k) if "%" in k else k
 
 
+def _safe(e):
+    """오류 메시지에서 인증키 가리기 (로그가 저장소에 올라가므로)"""
+    s = re.sub(r"serviceKey=[^&\s'\"]+", "serviceKey=***", str(e))
+    k = _key()
+    return s.replace(k, "***") if k else s
+
+
 def _call(url, params, quiet=False):
-    """API 한 번 호출 → (상태, {YYYYMM: 달러}). 상태: ok / unreg(이 API에 키가 등록 안 됨) / err"""
+    """API 한 번 호출 → (상태, {YYYYMM: 달러}). 상태: ok / unreg(이 API에 키가 등록 안 됨) / err
+    https 접속이 안 되면 http로 다시 시도 (포털 문서의 기본 주소는 http)"""
     label = f"{params.get('hsSgn')} {params.get('cntyCd', '')} {params['strtYymm']}-{params['endYymm']}"
     for attempt in range(3):
+        u = url if attempt == 0 else url.replace("https://", "http://")
         try:
-            r = requests.get(url, params=params, timeout=30)
+            r = requests.get(u, params=params, timeout=(10, 40))
             root = ET.fromstring(r.content)
             code = (root.findtext(".//resultCode") or root.findtext(".//returnReasonCode") or "").strip()
             if code not in ("00", "0", "000"):
@@ -61,7 +70,7 @@ def _call(url, params, quiet=False):
             return "ok", out
         except Exception as e:
             if attempt == 2 and not quiet:
-                print(f"  관세청 {label} 실패: {e}")
+                print(f"  관세청 {label} 실패: {type(e).__name__} {_safe(e)[:160]}")
             time.sleep(2 + attempt * 2)
     return "err", None
 
@@ -72,14 +81,15 @@ def _params(key, hs, ym0, ym1, **kw):
 
 def detect_mode(key, hs, ym0, ym1):
     """키가 승인된 API 방식 찾기: item → all → cnty 순서로 시험"""
-    st, d = _call(API["item"], _params(key, hs, ym0, ym1), quiet=True)
-    if st == "ok" and d:
+    st1, d = _call(API["item"], _params(key, hs, ym0, ym1), quiet=True)
+    if st1 == "ok" and d:
         return "item"
-    st, d = _call(API["cnty"], _params(key, hs, ym0, ym1), quiet=True)
-    if st == "ok" and d:
+    st2, d = _call(API["cnty"], _params(key, hs, ym0, ym1), quiet=True)
+    if st2 == "ok" and d:
         return "all"
-    st, d = _call(API["cnty"], _params(key, hs, ym0, ym1, cntyCd="US"))
-    if st == "ok":
+    st3, d = _call(API["cnty"], _params(key, hs, ym0, ym1, cntyCd="US"))
+    print(f"  관세청 방식 점검: 품목별={st1}, 국가별(전체)={st2}, 국가별(US)={st3}")
+    if st3 == "ok":
         return "cnty"
     print("  관세청: 이 키로 쓸 수 있는 수출입실적 API가 없습니다 (활용신청·승인 확인)")
     return None
