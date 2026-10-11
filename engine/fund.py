@@ -173,7 +173,10 @@ def series(raw, code):
             rec = raw.get((y, rp), {}).get(code)
             if rec is None:
                 continue
-            avail = pd.Timestamp(rec["rcept"]) + pd.Timedelta(days=1)
+            # DART는 정정 공시가 있으면 나중 접수번호를 돌려줌 → 법정 제출 기한(분기 45일, 사업보고서 90일)으로 상한
+            mo, dd = Q_END[rp]
+            deadline = pd.Timestamp(y, mo, dd) + pd.Timedelta(days=90 if qn == 4 else 45)
+            avail = min(pd.Timestamp(rec["rcept"]), deadline) + pd.Timedelta(days=1)
             vals = {}
             for k in ("ni", "rev"):
                 amt, add = rec.get(k, np.nan), rec.get(k + "_cum", np.nan)
