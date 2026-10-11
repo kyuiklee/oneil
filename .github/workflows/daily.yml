@@ -42,6 +42,7 @@ jobs:
       - name: 검색 실행
         env:
           DART_API_KEY: ${{ secrets.DART_API_KEY }}
+          CUSTOMS_API_KEY: ${{ secrets.CUSTOMS_API_KEY }}
         run: |
           set -o pipefail
           python engine/build.py 2>&1 | tee run.log

@@ -16,7 +16,7 @@ CACHE = os.path.join(ROOT, "cache", "fund.pkl.gz")
 API = "https://opendart.fss.or.kr/api"
 REPRTS = ("11013", "11012", "11014", "11011")          # 1분기, 반기, 3분기, 사업보고서
 Q_END = {"11013": (3, 31), "11012": (6, 30), "11014": (9, 30), "11011": (12, 31)}
-COLS = ["cg", "cgp", "sg", "ag", "roe", "ql"]
+COLS = ["cg", "cgp", "sg", "og", "ogp", "opm", "opm_d", "ag", "roe", "ql"]
 
 
 def _num(s):
@@ -166,6 +166,15 @@ def _growth(a, b):
     return (a / b - 1) * 100
 
 
+def _margin(op, rev):
+    """영업이익률 %. 매출이 없거나 0 이하면 NaN"""
+    op = np.nan if op is None else op
+    rev = np.nan if rev is None else rev
+    if not (np.isfinite(op) and np.isfinite(rev)) or rev <= 0:
+        return np.nan
+    return op / rev * 100
+
+
 def series(raw, code):
     """종목 하나의 실적 지표를 공시일(다음 날) 기준 시계열로"""
     Q, A = {}, {}
@@ -181,7 +190,7 @@ def series(raw, code):
             deadline = pd.Timestamp(y, mo, dd) + pd.Timedelta(days=90 if qn == 4 else 45)
             avail = min(pd.Timestamp(rec["rcept"]), deadline) + pd.Timedelta(days=1)
             vals = {}
-            for k in ("ni", "rev"):
+            for k in ("ni", "rev", "op"):
                 amt, add = rec.get(k, np.nan), rec.get(k + "_cum", np.nan)
                 prev = cum.get((qn - 1, k), np.nan)
                 if qn == 1:
@@ -200,10 +209,16 @@ def series(raw, code):
     for q in sorted(Q):
         cur, ly = Q[q], Q.get(q - 4, {})
         p, ply = Q.get(q - 1, {}), Q.get(q - 5, {})
+        opm, opm_ly = _margin(cur.get("op"), cur.get("rev")), _margin(ly.get("op"), ly.get("rev"))
         r = {"avail": cur["avail"], "ql": cur["ql"],
              "cg": _growth(cur["ni"], ly.get("ni", np.nan)),
              "cgp": _growth(p.get("ni", np.nan), ply.get("ni", np.nan)),
              "sg": _growth(cur["rev"], ly.get("rev", np.nan)),
+             # 영업이익: 이번 분기·직전 분기의 전년 동기 대비 증가율 (둘을 비교해 이익 가속 판단)
+             "og": _growth(cur.get("op", np.nan), ly.get("op", np.nan)),
+             "ogp": _growth(p.get("op", np.nan), ply.get("op", np.nan)),
+             # 분기 영업이익률과 전년 동기 대비 변화(%p)
+             "opm": opm, "opm_d": opm - opm_ly if np.isfinite(opm) and np.isfinite(opm_ly) else np.nan,
              "ag": np.nan, "roe": np.nan}
         ys = [y for y in A if A[y]["avail"] <= cur["avail"]]
         if ys:
