@@ -127,7 +127,8 @@ def load_raw(codes, key, refresh_hours=20):
                 continue
             k = (y, rp)
             stale = y >= y1 - 1 and now - cache["at"].get(k, 0) > refresh_hours * 3600
-            if k not in cache["raw"] or stale:
+            # 일부 묶음이 실패해 반쯤 채워진 보고서는 연도와 상관없이 다시 받음
+            if k not in cache["raw"] or k not in cache["at"] or stale:
                 todo.append(k)
     batches = [corps[i:i + 100] for i in range(0, len(corps), 100)]
     print(f"DART 요청 {len(todo)}개 보고서 × {len(batches)}묶음")
@@ -148,6 +149,8 @@ def load_raw(codes, key, refresh_hours=20):
         if not any(r is None for r in res):
             cache["at"][k] = now
     print(f"DART 수집 {time.time() - t0:.0f}초")
+    cov = " ".join(f"{y % 100}.{REPRTS.index(rp) + 1}Q:{len(v)}" for (y, rp), v in sorted(cache["raw"].items()))
+    print(f"보고서별 회사 수 {cov}")
     os.makedirs(os.path.dirname(CACHE), exist_ok=True)
     with gzip.open(CACHE, "wb") as f:
         pickle.dump(cache, f)
