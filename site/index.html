@@ -474,7 +474,8 @@ function simulate(S,{after=null,from=null}={}){
   const cal=calendar().filter(d=>d>=picks.reduce((a,r)=>a<r.date?a:r.date,'9999'));
   const byDate={};picks.forEach(r=>(byDate[r.date]=byDate[r.date]||[]).push(r));
   let cash=1,pos=[],peak=1,mdd=0,taken=0;const curve=[],mo={},closed=[];let prevEq=1;
-  const mtm=(p,i)=>{const k=i-p.i0;if(k<=0)return p.amt;const c=p.r.c;return p.amt*(1+c[Math.min(k,c.length)-1]/100);};
+  // r.c는 0.1% 단위 정수 → 1000으로 나눠야 비율 (100으로 나누면 보유 중 평가 손익이 10배로 부풀려짐)
+  const mtm=(p,i)=>{const k=i-p.i0;if(k<=0)return p.amt;const c=p.r.c;return p.amt*(1+c[Math.min(k,c.length)-1]/1000);};
   cal.forEach((d,i)=>{
     // 매도 (그날 종가 또는 손절·익절가)
     pos=pos.filter(p=>{if(p.r.ex.k!=null&&i-p.i0>=p.r.ex.k){cash+=p.amt*(1+(p.r.ex.ret-fee)/100);closed.push({...p,d});return false;}return true;});
