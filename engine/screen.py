@@ -74,7 +74,7 @@ def features(code, h, P, fund=None):
     if fund is not None and len(fund):
         fd = fund.copy()
         fd["_at"] = fd.index
-        fd = fd.reindex(fd.index.union(f.index)).ffill().reindex(f.index)
+        fd = fd.reindex(f.index, method="ffill")          # 각 날짜에 직전 공시 한 줄 전체를 씀 (빈 값을 예전 값으로 채우지 않음)
         age = (f.index.to_series() - pd.to_datetime(fd["_at"])).dt.days
         stale = age.isna() | (age > 200)
         for c in FUND_COLS:
