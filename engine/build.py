@@ -7,6 +7,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from screen import features, add_rs, pick_day, market_trend
 import data as D
 import fund as FD
+import export as EX
 
 ROOT = D.ROOT
 OUT = os.path.join(ROOT, "site", "data")
@@ -64,13 +65,15 @@ def main():
         raise SystemExit(f"일봉 수집 종목이 너무 적습니다 ({len(hist)}) — 데이터 소스 문제")
     fund = FD.load(list(hist))
     has_fund = bool(fund)
+    xp = EX.load(list(hist))
+    has_exp = bool(xp)
 
     keep_days = int(P.get("backtest_days", 500)) + 5
     feats = []
     for c, h in hist.items():
         if len(h) < 60:
             continue
-        f = features(c, h, P, fund.get(c) if fund else None)
+        f = features(c, h, P, fund.get(c) if fund else None, xp.get(c) if xp else None)
         feats.append(f.iloc[-keep_days:])
     F = pd.concat(feats)
     F = F[F.index >= F.index.max() - pd.Timedelta(days=int(keep_days * 1.5))]
@@ -110,6 +113,9 @@ def main():
         return {"code": r.code, "name": r.name, "mkt": r.mkt, "type": r.type, "rank": int(r.rank),
                 "score": r2(r.score, 1), "close": int(r.close), "chg": r2(r.chg), "amt": int(round(r.amt20)),
                 "rs": int(r.rs), "cg": r2(r.cg, 0), "cgp": r2(r.cgp, 0), "sg": r2(r.sg, 0), "ag": r2(r.ag, 0),
+                "og": r2(r.og, 0), "ogp": r2(r.ogp, 0), "opm": r2(r.opm, 1), "opm_d": r2(r.opm_d, 1),
+                "xg": r2(r.xg, 0), "xgp": r2(r.xgp, 0),
+                "xl": r.xl if isinstance(r.xl, str) else None, "xm": r.xm if isinstance(r.xm, str) else None,
                 "roe": r2(r.roe, 1), "ql": r.ql if isinstance(r.ql, str) else None,
                 "vr": r2(r.vol_ratio, 1), "depth": r2(r.depth, 0), "pivot": int(round(r.pivot)),
                 "off_hi": r2(r.off_hi, 1), "ud": r2(r.ud, 2), "m": r.m, "tags": r.tags}
@@ -119,6 +125,7 @@ def main():
         "generated_at": f"{now:%Y-%m-%d %H:%M}",
         "status": status,
         "fund": has_fund,
+        "exp": has_exp,
         "market": market,
         "config": {k: P[k] for k in ("top_n", "min_rs", "min_amount_eok", "stop_pct", "target_pct", "fee_pct")},
         "cands": [card(r) for r in T[T["date"] == trade_day].sort_values(["type", "rank"]).itertuples()],
@@ -143,11 +150,12 @@ def main():
         c = [i10((x / r.close - 1) * 100) for x in fut["Close"]]
         rows.append([f"{r.date:%Y-%m-%d}", r.type, int(r.rank), r.code, r.name, r2(r.score, 1), int(r.close), r2(r.chg),
                      r.mkt, int(r.rs), r2(r.cg, 0), r2(r.ag, 0), r2(r.sg, 0), r2(r.roe, 1), r.m, c,
-                     exit_info(r.close, fut, STOPS, True), exit_info(r.close, fut, TGTS, False)])
+                     exit_info(r.close, fut, STOPS, True), exit_info(r.close, fut, TGTS, False),
+                     r2(r.og, 0), r2(r.ogp, 0), r2(r.opm_d, 1), r2(r.xg, 0)])
     trades = {
         "fields": ["date", "type", "rank", "code", "name", "score", "close", "chg", "mkt", "rs", "cg", "ag", "sg", "roe", "m",
-                   "c", "xs", "xt"],
-        "stops": STOPS, "tgts": TGTS, "hold": HOLD, "fund": has_fund,
+                   "c", "xs", "xt", "og", "ogp", "opm_d", "xg"],
+        "stops": STOPS, "tgts": TGTS, "hold": HOLD, "fund": has_fund, "exp": has_exp,
         "note": "매수=추천일 종가. c=1~60일째 종가 수익률(0.1% 단위), xs/xt=손절·익절 레벨별 [처음 걸린 날, 수익률(0.1%)] (0=안 걸림). 비용 차감 전",
         "rows": rows,
     }
@@ -159,7 +167,7 @@ def main():
             json.dump(obj, f, ensure_ascii=False, separators=(",", ":"))
     nb = sum(1 for x in today["cands"] if x["type"] == "B")
     print(f"저장: 오늘 돌파 {nb} / 눌림 {len(today['cands']) - nb}, 과거 후보 {len(rows)}건, "
-          f"실적 {'있음' if has_fund else '없음'}, 상태 {status} ({time.time() - t0:.0f}초)")
+          f"실적 {'있음' if has_fund else '없음'}, 수출 {'있음' if has_exp else '없음'}, 상태 {status} ({time.time() - t0:.0f}초)")
 
 
 if __name__ == "__main__":

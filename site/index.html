@@ -207,6 +207,16 @@ textarea.inp{min-height:70px;font-size:12px}
       <div class="seg" role="group" aria-label="실적 조건" id="tdFund">
         <button data-v="off" aria-pressed="false">무관</button><button data-v="C" aria-pressed="true">C 충족</button><button data-v="CA" aria-pressed="false">C·A 충족</button>
       </div>
+      <div class="ctl-row"><span>이익 가속</span><small>분기 영업이익 +30%↑ · 직전 분기보다 빨라짐</small></div>
+      <div class="seg" role="group" aria-label="이익 가속" id="tdAcc">
+        <button data-v="off">무관</button><button data-v="A">영업익 가속</button><button data-v="M">가속+마진↑</button>
+      </div>
+      <div class="xwrap">
+        <div class="ctl-row"><span>품목 수출</span><small>관세청 3개월 합계 전년 대비 · 매핑 종목만</small></div>
+        <div class="seg" role="group" aria-label="품목 수출" id="tdX">
+          <button data-v="off">무관</button><button data-v="0">플러스</button><button data-v="20">+20%↑</button><button data-v="50">+50%↑</button>
+        </div>
+      </div>
       <div class="ctl-row"><label for="minS">최소 점수</label><output id="minSv">0점</output></div>
       <input type="range" id="minS" min="0" max="90" step="5" value="0">
     </div>
@@ -249,6 +259,16 @@ textarea.inp{min-height:70px;font-size:12px}
       <div class="ctl-row"><span>A 연간 순이익 3년 연평균</span></div>
       <div class="seg" role="group" aria-label="연간 성장" id="btAg">
         <button data-v="off">끔</button><button data-v="0">플러스</button><button data-v="15">15%↑</button><button data-v="25">25%↑</button>
+      </div>
+      <div class="ctl-row"><span>영업이익 가속</span><small>+30%↑이고 직전 분기보다 빨라짐</small></div>
+      <div class="seg" role="group" aria-label="영업이익 가속" id="btAcc">
+        <button data-v="off">끔</button><button data-v="A">가속</button><button data-v="M">가속+마진↑</button>
+      </div>
+      <div class="xwrap">
+        <div class="ctl-row"><span>품목 수출 3개월 전년 대비</span><small>매핑 종목만</small></div>
+        <div class="seg" role="group" aria-label="품목 수출" id="btX">
+          <button data-v="off">끔</button><button data-v="0">플러스</button><button data-v="20">+20%↑</button><button data-v="50">+50%↑</button>
+        </div>
       </div>
       <div class="ctl-row"><span>L 최소 상대강도(RS)</span></div>
       <div class="seg" role="group" aria-label="RS" id="btRs">
@@ -316,7 +336,7 @@ const cls = v => v>0?'up':(v<0?'dn':'');
 const esc = s => String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const MKT={K:'코스피',Q:'코스닥'}, MTXT={U:'상승 추세',C:'조정',D:'하락 추세'};
 const TYTXT={B:'돌파',P:'눌림'};
-let TODAY=null, TR=null, BENCH=null, ROWS=[], STOPS=[5,7,8,10], TGTS=[15,20,25,30], FUND=true;
+let TODAY=null, TR=null, BENCH=null, ROWS=[], STOPS=[5,7,8,10], TGTS=[15,20,25,30], FUND=true, EXPD=false;
 
 function kst(){const p=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Seoul',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23',weekday:'short'}).formatToParts(new Date());
   const o={};p.forEach(x=>o[x.type]=x.value);return {date:`${o.year}-${o.month}-${o.day}`,h:+o.hour,m:+o.minute,wd:o.weekday};}
@@ -360,10 +380,15 @@ function drawHeader(){
 }
 
 /* ---------- 오늘 후보 ---------- */
-const TD={type:store.get('td_type','B'),fund:store.get('td_fund','C')};
+const TD={type:store.get('td_type','B'),fund:store.get('td_fund','C'),acc:store.get('td_acc','off'),x:store.get('td_x','off')};
 // 실적 데이터가 없으면(DART 키 없음) 실적 조건은 건너뜀
 const passC=(r,v)=>!FUND||v==='off'||(r.cg!=null&&r.cg>=+v);
 const passA=(r,v)=>!FUND||v==='off'||(r.ag!=null&&r.ag>=+v);
+// 영업이익 가속: 이번 분기 +30%↑이고 직전 분기 증가율보다 높음 (직전 분기 적자면 이번 분기만 봄). M은 영업이익률도 전년보다 개선
+const opAccel=r=>r.og!=null&&r.og>=30&&(r.ogp==null||r.og>r.ogp);
+const passAcc=(r,v)=>!FUND||v==null||v==='off'||(opAccel(r)&&(v!=='M'||(r.opm_d!=null&&r.opm_d>0)));
+// 품목 수출: 관세청 키가 없으면 건너뜀. 매핑에 없는 종목은 조건을 켜면 빠짐
+const passX=(r,v)=>!EXPD||v==null||v==='off'||(r.xg!=null&&r.xg>=+v);
 function letters(r){
   const M=TODAY.market&&TODAY.market[r.mkt==='Q'?'KOSDAQ':'KOSPI'];
   const it=[['C',r.cg!=null&&r.cg>=20],['A',r.ag!=null&&r.ag>=15],['N',r.off_hi!=null&&r.off_hi>=-15],
@@ -373,7 +398,8 @@ function letters(r){
 function drawPicks(){
   if(!TODAY)return;
   const min=+$('#minS').value, all=(TODAY.cands||[]).filter(r=>r.type===TD.type);
-  const f=TD.fund, arr=all.filter(r=>r.score>=min&&(!TODAY.fund||((f==='off'||passC(r,20))&&(f!=='CA'||passA(r,15))))).slice(0,20);
+  const f=TD.fund, arr=all.filter(r=>r.score>=min&&(!TODAY.fund||((f==='off'||passC(r,20))&&(f!=='CA'||passA(r,15))))
+    &&passAcc(r,TD.acc)&&passX(r,TD.x)).slice(0,20);
   if(!arr.length){$('#picks').innerHTML=`<div class="empty">${all.length?'조건에 맞는 종목이 없습니다. 실적 조건이나 최소 점수를 낮춰 보세요.':'오늘은 이 유형에 해당하는 종목이 없습니다.'}</div>`;return;}
   const cfg=TODAY.config||{stop_pct:7,target_pct:20};
   $('#picks').innerHTML=arr.map((r,i)=>{
@@ -390,6 +416,9 @@ function drawPicks(){
       ${r.tags?`<div class="tags">${r.tags.split(' ').map(t=>`<span>${esc(t)}</span>`).join('')}</div>`:''}
       <dl><dt>C 분기 순이익</dt><dd>${r.cg!=null?`<span class="${cls(r.cg)}">${pct(r.cg,0)}</span>`:'-'}${r.cgp!=null?` <span class="mute">(전 분기 ${pct(r.cgp,0)})</span>`:''}${r.ql?` <span class="mute">${r.ql}</span>`:''}</dd>
       <dt>분기 매출</dt><dd>${r.sg!=null?pct(r.sg,0):'-'}</dd>
+      <dt>분기 영업이익</dt><dd>${r.og!=null?`<span class="${cls(r.og)}">${pct(r.og,0)}</span>`:'-'}${r.ogp!=null?` <span class="mute">(전 분기 ${pct(r.ogp,0)})</span>`:''}${opAccel(r)?' <span class="up">가속</span>':''}</dd>
+      <dt>영업이익률</dt><dd>${r.opm!=null?r.opm+'%':'-'}${r.opm_d!=null?` <span class="mute">(전년 대비 <span class="${cls(r.opm_d)}">${r.opm_d>0?'+':''}${r.opm_d}%p</span>)</span>`:''}</dd>
+      ${r.xl?`<dt>품목 수출</dt><dd>${esc(r.xl)} ${r.xg!=null?`<span class="${cls(r.xg)}">${pct(r.xg,0)}</span>`:'-'} <span class="mute">${r.xm?r.xm+'까지 3개월':''}${r.xgp!=null?` · 한 달 전 ${pct(r.xgp,0)}`:''}</span></dd>`:''}
       <dt>A 3년 연평균</dt><dd>${r.ag!=null?pct(r.ag,0):'-'}${r.roe!=null?` <span class="mute">· ROE ${r.roe}%</span>`:''}</dd>
       <dt>52주 고가 대비</dt><dd>${r.off_hi>=0?'신고가':pct(r.off_hi,1)}</dd>${ex}
       <dt>매집 지표</dt><dd>${r.ud} <span class="mute">(상승일/하락일 거래량)</span></dd>
@@ -405,6 +434,8 @@ function bindSeg(id,get,set){$$(`#${id} button`).forEach(b=>{b.setAttribute('ari
   b.onclick=()=>{set(b.dataset.v);$$(`#${id} button`).forEach(x=>x.setAttribute('aria-pressed',x===b));};});}
 bindSeg('tdType',()=>TD.type,v=>{TD.type=v;store.set('td_type',v);drawPicks();});
 bindSeg('tdFund',()=>TD.fund,v=>{TD.fund=v;store.set('td_fund',v);drawPicks();});
+bindSeg('tdAcc',()=>TD.acc,v=>{TD.acc=v;store.set('td_acc',v);drawPicks();});
+bindSeg('tdX',()=>TD.x,v=>{TD.x=v;store.set('td_x',v);drawPicks();});
 $('#minS').oninput=e=>{$('#minSv').textContent=e.target.value+'점';drawPicks();};
 
 /* ---------- 공용 계산 ----------
@@ -425,7 +456,7 @@ function exitOf(S,r){
 const okM=(S,m)=>S.m==='off'||(S.m==='D'?m!=='D':m==='U');
 function filterRows(S,rows){
   return rows.filter(r=>(S.type==='A'||r.type===S.type)&&(S.mkt==='A'||r.mkt===S.mkt)&&r.score>=S.minS&&r.rs>=+S.rs
-    &&passC(r,S.cg)&&passA(r,S.ag)&&okM(S,r.m));
+    &&passC(r,S.cg)&&passA(r,S.ag)&&passAcc(r,S.acc)&&passX(r,S.xg)&&okM(S,r.m));
 }
 function topPerDay(rows,top){const g={};rows.forEach(r=>(g[r.date+r.type]=g[r.date+r.type]||[]).push(r));
   return Object.values(g).flatMap(a=>a.sort((x,y)=>y.score-x.score).slice(0,top));}
@@ -473,7 +504,9 @@ function describe(S){
   const ty={P:'50일선 눌림',B:'베이스 돌파',A:'돌파+눌림'}[S.type], mk={A:'전체 시장',K:'코스피',Q:'코스닥'}[S.mkt];
   const c=S.cg==='off'?'':(S.cg==='0'?' · C 흑자 증가':` · C ${S.cg}%↑`), a=S.ag==='off'?'':` · A ${S.ag==='0'?'플러스':S.ag+'%↑'}`;
   const m={off:'',D:' · 하락장 쉼',U:' · 상승장만'}[S.m];
-  return `${mk} · ${ty} · RS ${S.rs}↑${c}${a}${m}${S.minS?` · ${S.minS}점↑`:''} · `+
+  const ac=!S.acc||S.acc==='off'?'':(S.acc==='M'?' · 영업익 가속+마진↑':' · 영업익 가속');
+  const xg=!S.xg||S.xg==='off'?'':` · 수출 ${S.xg==='0'?'플러스':'+'+S.xg+'%↑'}`;
+  return `${mk} · ${ty} · RS ${S.rs}↑${c}${a}${ac}${xg}${m}${S.minS?` · ${S.minS}점↑`:''} · `+
     `손절 ${S.stop==='off'?'없음':'-'+S.stop+'%'} · 익절 ${S.tgt==='off'?'없음':'+'+S.tgt+'%'} · 최대 ${S.N}일 · 하루 ${S.top}개 · 동시 ${S.slots}종목 · 비용 ${S.fee}%`;}
 const WHY={stop:'손절',tgt:'익절',time:'기간 만료'};
 
@@ -508,9 +541,9 @@ function drawLog(){
 }
 
 /* ---------- 백테스트 ---------- */
-const DEF_S={type:'B',mkt:'A',cg:'20',ag:'off',rs:'80',m:'D',minS:0,stop:'7',tgt:'20',N:40,top:5,slots:10,fee:0.25};
+const DEF_S={type:'B',mkt:'A',cg:'20',ag:'off',acc:'off',xg:'off',rs:'80',m:'D',minS:0,stop:'7',tgt:'20',N:40,top:5,slots:10,fee:0.25};
 const BT={per:12,...DEF_S,...store.get('bt',{})};
-const SEGS=[['btPer','per'],['btType','type'],['btMkt','mkt'],['btCg','cg'],['btAg','ag'],['btRs','rs'],['btM','m'],['btStop','stop'],['btTgt','tgt']];
+const SEGS=[['btPer','per'],['btType','type'],['btMkt','mkt'],['btCg','cg'],['btAg','ag'],['btAcc','acc'],['btX','xg'],['btRs','rs'],['btM','m'],['btStop','stop'],['btTgt','tgt']];
 const SLIDERS=[['btScore','minS','점'],['btHold','N','일'],['btTop','top','개'],['btSlots','slots','종목'],['btFee','fee','%']];
 const saveBT=()=>store.set('bt',BT);
 SEGS.forEach(([id,k])=>bindSeg(id,()=>BT[k],v=>{BT[k]=k==='per'?+v:v;saveBT();drawBT();}));
@@ -700,7 +733,9 @@ async function load(){
   const get=n=>fetch(`data/${n}?t=${Date.now()}`,{cache:'no-store'}).then(r=>r.ok?r.json():null).catch(()=>null);
   [TODAY,TR,BENCH]=await Promise.all([get('today.json'),get('trades.json'),get('bench.json')]);
   if(!TODAY){$('#tdate').textContent='데이터 없음';$('#picks').innerHTML='<div class="empty">아직 첫 검색이 실행되지 않았습니다. 평일 15시 이후 다시 열어 보세요.</div>';return;}
-  FUND=!!TODAY.fund;
+  FUND=!!TODAY.fund; EXPD=!!TODAY.exp;
+  // 관세청 키가 없으면 수출 조건 줄을 숨김
+  $$('.xwrap').forEach(x=>x.style.display=EXPD?'':'none');
   if(TR)prepTrades();
   drawClock();drawHeader();drawPicks();drawLog();drawBT();drawStrat();
 }

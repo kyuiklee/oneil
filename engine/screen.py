@@ -8,12 +8,16 @@
   L  상대강도 RS 점수 1~99 (IBD 방식: 최근 3·6·9·12개월 수익률 가중, 전 종목 순위)
   I  기관 매집 근사: 최근 50일 상승일 거래량 ÷ 하락일 거래량 (가격·거래량 기반)
   M  시장 방향: 지수와 50·200일선 (앱에서 하락장 쉬기 옵션)
+추가 (몇 배 상승주의 공통점):
+  영업이익 가속  분기 영업이익 전년 대비 증가율이 직전 분기보다 높아짐 + 영업이익률 변화
+  품목 수출     관세청 품목별 수출 3개월 합계의 전년 대비 증가율 (engine/export_map.json 에 적은 종목만)
 """
 import numpy as np
 import pandas as pd
 from numpy.lib.stride_tricks import sliding_window_view
 
-FUND_COLS = ["cg", "cgp", "sg", "ag", "roe"]
+FUND_COLS = ["cg", "cgp", "sg", "og", "ogp", "opm", "opm_d", "ag", "roe"]
+EXP_COLS = ["xg", "xgp"]
 
 
 def _days_since_max(H, win):
@@ -29,7 +33,24 @@ def _days_since_max(H, win):
     return pd.Series(out, index=H.index)
 
 
-def features(code, h, P, fund=None):
+def _attach(f, src, cols, label_cols, max_age):
+    """공표일 기준 시계열을 일봉 날짜에 붙임 (각 날짜에 직전 공표 한 줄 전체, max_age일 넘으면 무효)"""
+    if src is not None and len(src):
+        sd = src.copy()
+        sd["_at"] = sd.index
+        sd = sd.reindex(f.index, method="ffill")
+        age = (f.index.to_series() - pd.to_datetime(sd["_at"])).dt.days
+        stale = age.isna() | (age > max_age)
+        for c in cols + label_cols:
+            f[c] = sd[c].where(~stale) if c in sd else (np.nan if c in cols else None)
+    else:
+        for c in cols:
+            f[c] = np.nan
+        for c in label_cols:
+            f[c] = None
+
+
+def features(code, h, P, fund=None, exp=None):
     h = h[["Open", "High", "Low", "Close", "Volume"]].astype(float).copy()
     h.index = pd.to_datetime(h.index).normalize()
     h = h[~h.index.duplicated(keep="last")].sort_index()
@@ -71,19 +92,10 @@ def features(code, h, P, fund=None):
     brk = (C > piv) & (f["vol_ratio"] >= P["min_vol"])
     f["brk_recent"] = brk.shift(1).rolling(60, min_periods=1).max().fillna(0) > 0
     # 실적 (공시 다음 날부터, 200일 넘게 새 공시가 없으면 무효)
-    if fund is not None and len(fund):
-        fd = fund.copy()
-        fd["_at"] = fd.index
-        fd = fd.reindex(f.index, method="ffill")          # 각 날짜에 직전 공시 한 줄 전체를 씀 (빈 값을 예전 값으로 채우지 않음)
-        age = (f.index.to_series() - pd.to_datetime(fd["_at"])).dt.days
-        stale = age.isna() | (age > 200)
-        for c in FUND_COLS:
-            f[c] = fd[c].where(~stale)
-        f["ql"] = fd["ql"].where(~stale)
-    else:
-        for c in FUND_COLS:
-            f[c] = np.nan
-        f["ql"] = None
+    # 각 날짜에 직전 공시 한 줄 전체를 씀 (빈 값을 예전 값으로 채우지 않음)
+    _attach(f, fund, FUND_COLS, ["ql"], 200)
+    # 품목 수출 (공표 다음 날부터, 70일 넘게 새 수치가 없으면 무효)
+    _attach(f, exp, EXP_COLS, ["xm", "xl"], 70)
     return f
 
 
@@ -107,6 +119,14 @@ def _score(x, kind):
     return s.round(1)
 
 
+def op_accel(og, ogp, min_g=30):
+    """영업이익 가속: 이번 분기 증가율이 min_g% 이상이고 직전 분기 증가율보다 높음
+    (직전 분기가 적자여서 증가율이 없으면 이번 분기 흑자 전환·증가만으로 인정)"""
+    if not np.isfinite(og) or og < min_g:
+        return False
+    return (not np.isfinite(ogp)) or og > ogp
+
+
 def _tags(x, kind):
     out = []
     for r in x.itertuples():
@@ -115,6 +135,10 @@ def _tags(x, kind):
         if r.rs >= 90: t.append("RS90+")
         if np.isfinite(r.cg) and np.isfinite(r.cgp) and r.cg > r.cgp: t.append("이익가속")
         if np.isfinite(r.cg) and r.cg >= 100: t.append("이익2배+")
+        if op_accel(r.og, r.ogp): t.append("영업익가속")
+        if np.isfinite(r.opm_d) and r.opm_d > 0: t.append("마진개선")
+        if np.isfinite(r.xg) and r.xg >= 20:
+            t.append(f"수출{r.xg:+.0f}%" + ("↑" if np.isfinite(r.xgp) and r.xg > r.xgp else ""))
         if np.isfinite(r.roe) and r.roe >= 17: t.append("ROE17+")
         if r.ud >= 1.5: t.append("매집")
         if kind == "B":
