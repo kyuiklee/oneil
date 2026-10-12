@@ -182,6 +182,7 @@ nav button[aria-current=page]{color:var(--ink)}
 .bar2 i{display:block;height:100%;background:var(--ink)}
 .cnt{font-size:13px;font-weight:600;color:var(--sub);margin-left:6px}
 textarea.inp{min-height:70px;font-size:12px}
+.tn-t th,.tn-t td{padding:7px 5px;font-size:12.5px;white-space:nowrap}
 .item>button:active{background:var(--track)}
 </style>
 </head>
@@ -321,10 +322,32 @@ textarea.inp{min-height:70px;font-size:12px}
     <div id="btMonth" class="hero"></div>
     <p class="note">승률·중앙값·평균은 조건에 맞은 후보 전부(건별) 기준이고, 누적 수익은 자금을 동시 보유 최대 수만큼 나눠 빈자리가 있을 때만 점수 높은 순으로 산다고 가정한 계좌 기준입니다. 같은 날 손절가와 익절가를 모두 건드리면 손절로 봅니다. 시가부터 손절·익절가를 넘으면 시가에 매도합니다. 실적은 DART 공시 접수 다음 날부터 반영해 미래 정보가 섞이지 않게 했습니다. 현재 상장 종목만 대상이라 상장폐지 종목이 빠져 있어 실제보다 좋게 나올 수 있습니다.</p>
   </section>
+  <!-- ===== 텐배거 ===== -->
+  <section class="view" id="v-ten" aria-label="텐배거 검색">
+    <h2 class="sec-title" style="margin-top:6px">텐배거 초기 신호</h2>
+    <p class="note" style="margin-top:0">깊이 빠졌던 종목이 바닥 이후 <b>처음으로 52주 신고가</b>를 낸 날을 잡습니다. 2025~26년 10배 종목 70개는 이 시점에 RS 90 안팎, 영업이익 +100% 안팎, 저점 시총 1~2천억이 공통이었습니다. 신호 후 최고가까지는 보통 10~11개월 걸렸습니다.</p>
+    <div class="ctl">
+      <div class="ctl-row"><span>저점 전 하락폭</span><small>바닥 전 52주 고점 대비 (10배 종목 중앙값 -55%)</small></div>
+      <div class="seg" role="group" aria-label="저점 전 하락폭" id="tnDd"><button data-v="25">-25%↓</button><button data-v="40">-40%↓</button><button data-v="50">-50%↓</button></div>
+      <div class="ctl-row"><span>RS 상대강도</span><small>신호일 기준 (10배 종목 91%가 80 이상)</small></div>
+      <div class="seg" role="group" aria-label="RS" id="tnRs"><button data-v="0">무관</button><button data-v="80">80↑</button><button data-v="90">90↑</button></div>
+      <div class="ctl-row"><span>분기 영업이익</span><small>전년 동기 대비 (10배 종목 중앙값 +100%)</small></div>
+      <div class="seg" role="group" aria-label="영업이익" id="tnOg"><button data-v="off">무관</button><button data-v="30">+30%↑</button><button data-v="100">+100%↑</button><button data-v="A">가속</button></div>
+      <div class="ctl-row"><span>저점 시가총액</span><small>현재 주식 수 × 저점 가격 (근사)</small></div>
+      <div class="seg" role="group" aria-label="저점 시가총액" id="tnMc"><button data-v="0">무관</button><button data-v="10000">1조↓</button><button data-v="5000">5천억↓</button><button data-v="3000">3천억↓</button></div>
+    </div>
+    <h2 class="sec-title">최근 신호 <span class="cnt" id="tnCnt"></span></h2>
+    <div class="list" id="tnList"></div>
+    <h2 class="sec-title">같은 조건의 과거 성과</h2>
+    <div class="hero" id="tnBt"></div>
+    <div id="tnTop"></div>
+    <p class="note">신호일 종가에 사서 1년(250거래일) 보유했다고 본 결과이며 비용 차감 전입니다. 조건은 2025~26년 10배 종목을 보고 정한 것이라 같은 기간 성과는 실제보다 좋게 나올 수 있으니(사후 맞춤), 2024년 신호 성과를 따로 확인하세요. 현재 상장 종목만 대상입니다. 매수 권유가 아닙니다.</p>
+  </section>
 </div>
 
 <nav aria-label="메뉴"><div class="wrap">
   <button data-v="today" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 18h4v-4h4v-4h4l4-4M3 10h18"/></svg>오늘</button>
+  <button data-v="ten"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.6 5.6 6 .7-4.5 4.1 1.2 6L12 16.4 6.7 19.4l1.2-6L3.4 9.3l6-.7z"/></svg>텐배거</button>
   <button data-v="strat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg>내 전략</button>
   <button data-v="log"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 4h14v16H5zM8 9h8M8 13h8M8 17h5"/></svg>기록</button>
   <button data-v="bt"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19h16M5 15l4-5 4 3 6-7"/></svg>백테스트</button>
@@ -855,6 +878,75 @@ $('#btSave').addEventListener('click',e=>{const b=e.target.closest('[data-sv]');
   EDITING=null;SAVE_OPEN=false;UI={};saveStrats();drawSaveBox();go('strat');
 });
 
+/* ---------- 텐배거 ---------- */
+let TEN=null;
+const TN={dd:store.get('tn_dd','40'),rs:store.get('tn_rs','90'),og:store.get('tn_og','30'),mc:store.get('tn_mc','5000')};
+function tnPass(e){
+  if(e.dd==null||e.dd>-TN.dd)return false;
+  if(+TN.rs&&!(e.rs!=null&&e.rs>=+TN.rs))return false;
+  if(TEN&&TEN.fund&&TN.og!=='off'){
+    if(e.og==null)return false;
+    if(TN.og==='A'){if(!(e.og>=30&&(e.ogp==null||e.og>e.ogp)))return false;}
+    else if(e.og<+TN.og)return false;}
+  if(+TN.mc&&!(e.mcl!=null&&e.mcl<=+TN.mc))return false;
+  return true;
+}
+const med=a=>{if(!a.length)return null;const b=[...a].sort((x,y)=>x-y),m=b.length>>1;return b.length%2?b[m]:(b[m-1]+b[m])/2;};
+function tnStat(g){
+  const r=g.map(e=>e.r250);
+  return {n:g.length,w:g.filter(e=>e.r250>0).length/g.length*100,med:med(r),m:r.reduce((a,b)=>a+b,0)/g.length,
+    m120:med(g.map(e=>e.r120)),x2:g.filter(e=>e.mx>=2).length/g.length*100,x3:g.filter(e=>e.mx>=3).length/g.length*100,
+    x5:g.filter(e=>e.mx>=5).length/g.length*100,x10:g.filter(e=>e.mx>=10).length/g.length*100,dn:med(g.map(e=>e.dn)),mxd:med(g.filter(e=>e.mx>=2).map(e=>e.mxd))};
+}
+function drawTen(){
+  if(!TEN){$('#tnList').innerHTML='<div class="empty">아직 텐배거 검색 결과가 없습니다. 다음 자동 실행 뒤에 나타납니다.</div>';$('#tnBt').innerHTML='';return;}
+  const rec=TEN.recent.filter(tnPass).sort((a,b)=>b.date.localeCompare(a.date)||(b.rs||0)-(a.rs||0));
+  $('#tnCnt').textContent=`최근 ${TEN.recent_days}거래일 · ${rec.length}종목`;
+  const dl=(k,v)=>`<dt>${k}</dt><dd>${v}</dd>`;
+  $('#tnList').innerHTML=rec.length?rec.map((e,i)=>`<div class="item"><button aria-expanded="false">
+      <span class="rk">${i+1}</span>
+      <span><div class="nm">${esc(e.name)}<span class="mk ${e.mkt}">${MKT[e.mkt]}</span></div>
+      <div class="px"><span class="mute">${e.date.slice(5).replace('-','/')} 신호 ·</span> 저점 대비 <b class="up">+${e.gain}%</b> <span class="mute">· RS ${e.rs??'-'} · 영업익 ${e.og!=null?pct(e.og,0):'-'}</span></div></span>
+      <span class="sc" style="text-align:right"><strong class="${cls(e.since)}">${pct(e.since,1)}</strong><small class="mute" style="display:block;font-size:11.5px">신호 후</small></span>
+    </button><div class="detail"><dl>
+      ${dl('신호일',`${e.date} 종가 ${fmt(e.close)}원`)}
+      ${dl('현재',`${fmt(e.cur)}원 <span class="${cls(e.since)}">${pct(e.since,1)}</span> <span class="mute">· 52주 고가 대비 ${e.off>=0?'신고가':pct(e.off,1)}</span>`)}
+      ${dl('바닥',`신호 ${e.ago}거래일 전 · 바닥 전 고점 대비 ${e.dd}%`)}
+      ${dl('RS',`${e.rs??'-'} <span class="mute">(현재 ${e.rs_now??'-'})</span>`)}
+      ${dl('분기 영업이익',`${e.og!=null?`<span class="${cls(e.og)}">${pct(e.og,0)}</span>`:'-'}${e.ogp!=null?` <span class="mute">(전 분기 ${pct(e.ogp,0)})</span>`:''}${e.og!=null&&e.og>=30&&(e.ogp==null||e.og>e.ogp)?' <span class="up">가속</span>':''}`)}
+      ${dl('분기 매출',e.sg!=null?pct(e.sg,0):'-')}
+      ${dl('영업이익률',e.opm_d!=null?`전년 대비 <span class="${cls(e.opm_d)}">${e.opm_d>0?'+':''}${e.opm_d}%p</span>`:'-')}
+      ${dl('시가총액',`저점 ${fmt(e.mcl)}억 → 신호일 ${fmt(e.mc)}억`)}
+      ${dl('거래대금',`20일 평균 ${fmt(e.amt)}억`)}
+      ${dl('종목코드',e.code)}</dl>
+      <a class="go" href="https://m.stock.naver.com/domestic/stock/${e.code}/total" target="_blank" rel="noopener">네이버 차트 열기</a>
+    </div></div>`).join(''):'<div class="empty">최근 신호 중 조건에 맞는 종목이 없습니다. 조건을 한 단계 낮춰 보세요.</div>';
+  // 과거 성과
+  const full=TEN.ev.filter(e=>e.nf>=TEN.fwd&&e.r250!=null);
+  const g=full.filter(tnPass), base=full, st=g.length?tnStat(g):null, sb=base.length?tnStat(base):null;
+  const yr=y=>{const a=g.filter(e=>e.date.startsWith(y));return a.length?tnStat(a):null;};
+  const row=(n,s)=>s?`<tr><td>${n}</td><td>${s.n}</td><td>${s.w.toFixed(0)}%</td><td class="${cls(s.med)}">${pct(s.med,0)}</td><td>${s.x2.toFixed(0)}%</td><td>${s.x5.toFixed(0)}%</td></tr>`:`<tr><td>${n}</td><td>0</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>`;
+  $('#tnBt').innerHTML=st?`<div class="mute" style="font-size:13px">1년 추적이 끝난 신호 ${st.n}건 (전체 신호 ${base.length}건 중)</div>
+    <div class="big ${cls(st.med)}">${pct(st.med,0)}</div><div class="vs">1년 보유 건당 중앙값 · 승률 ${st.w.toFixed(0)}% · 평균 ${pct(st.m,0)} · 120일 중앙값 ${pct(st.m120,0)}</div>
+    <div class="checks">
+      <div class="ck ok"><b>${st.x2.toFixed(0)}%</b>1년 안 2배</div><div class="ck ok"><b>${st.x3.toFixed(0)}%</b>3배</div><div class="ck ok"><b>${st.x5.toFixed(0)}%</b>5배</div>
+      <div class="ck ok"><b>${st.x10.toFixed(0)}%</b>10배</div><div class="ck ${st.dn<-30?'no':'ok'}"><b>${pct(st.dn,0)}</b>보유 중 최대하락 중앙값</div><div class="ck ok"><b>${st.mxd!=null?Math.round(st.mxd)+'일':'-'}</b>2배 종목 최고가까지</div>
+    </div>
+    <table class="tn-t" style="margin-top:12px"><tr><th></th><th>건수</th><th>승률</th><th>1년 중앙값</th><th>2배</th><th>5배</th></tr>
+      ${row('이 조건',st)}${row('조건 없음',sb)}${['2024','2025'].map(y=>row(y+'년 신호',yr(y))).join('')}</table>`
+    :`<div class="empty">1년 추적이 끝난 신호 중 조건에 맞는 것이 없습니다.</div>`;
+  const top=g.length?[...g].sort((a,b)=>b.mx-a.mx).slice(0,10):[];
+  $('#tnTop').innerHTML=top.length?`<h2 class="sec-title">이 조건으로 잡혔던 과거 종목 (1년 안 최고 배수 순)</h2><div class="list">`+
+    top.map(e=>`<div class="pos"><span><span class="nm2">${esc(e.name)}</span><div class="sub">${e.date} 신호 · RS ${e.rs??'-'} · 영업익 ${e.og!=null?pct(e.og,0):'-'} · 저점시총 ${fmt(e.mcl)}억</div></span>
+      <span class="rt up">${e.mx}배<small>1년 뒤 <span class="${cls(e.r250)}">${pct(e.r250,0)}</span></small></span></div>`).join('')+'</div>':'';
+}
+$('#tnList').addEventListener('click',e=>{const b=e.target.closest('.item>button');if(!b)return;
+  const it=b.parentElement, o=!it.classList.contains('open');it.classList.toggle('open',o);b.setAttribute('aria-expanded',o);});
+bindSeg('tnDd',()=>TN.dd,v=>{TN.dd=v;store.set('tn_dd',v);drawTen();});
+bindSeg('tnRs',()=>TN.rs,v=>{TN.rs=v;store.set('tn_rs',v);drawTen();});
+bindSeg('tnOg',()=>TN.og,v=>{TN.og=v;store.set('tn_og',v);drawTen();});
+bindSeg('tnMc',()=>TN.mc,v=>{TN.mc=v;store.set('tn_mc',v);drawTen();});
+
 /* ---------- 탭 ---------- */
 $$('nav button').forEach(b=>b.onclick=()=>{$$('nav button').forEach(x=>x.removeAttribute('aria-current'));b.setAttribute('aria-current','page');
   $$('.view').forEach(v=>v.classList.toggle('on',v.id==='v-'+b.dataset.v));window.scrollTo(0,0);
@@ -863,7 +955,8 @@ $$('nav button').forEach(b=>b.onclick=()=>{$$('nav button').forEach(x=>x.removeA
 /* ---------- 데이터 불러오기 ---------- */
 async function load(){
   const get=n=>fetch(`data/${n}?t=${Date.now()}`,{cache:'no-store'}).then(r=>r.ok?r.json():null).catch(()=>null);
-  [TODAY,TR,BENCH,PRICES]=await Promise.all([get('today.json'),get('trades.json'),get('bench.json'),get('prices.json')]);
+  [TODAY,TR,BENCH,PRICES,TEN]=await Promise.all([get('today.json'),get('trades.json'),get('bench.json'),get('prices.json'),get('ten.json')]);
+  drawTen();
   KNOWN=BENCH&&BENCH.kospi?BENCH.kospi.map(x=>x[0]).sort():[];
   if(!TODAY){$('#tdate').textContent='데이터 없음';$('#picks').innerHTML='<div class="empty">아직 첫 검색이 실행되지 않았습니다. 평일 15시 이후 다시 열어 보세요.</div>';return;}
   FUND=!!TODAY.fund; EXPD=!!TODAY.exp;
