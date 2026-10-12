@@ -339,9 +339,13 @@ textarea.inp{min-height:70px;font-size:12px}
     <h2 class="sec-title">최근 신호 <span class="cnt" id="tnCnt"></span></h2>
     <div class="list" id="tnList"></div>
     <h2 class="sec-title">같은 조건의 과거 성과</h2>
+    <div class="ctl" style="margin-bottom:10px">
+      <div class="ctl-row"><span>매도 규칙</span><small>최대 1년 보유 · 손절은 매수가 대비 -15%</small></div>
+      <div class="seg" role="group" aria-label="매도 규칙" id="tnEx"><button data-v="hold">1년 보유</button><button data-v="stop">손절만</button><button data-v="trail">손절+고점-25%</button><button data-v="ma50">손절+50일선</button></div>
+    </div>
     <div class="hero" id="tnBt"></div>
     <div id="tnTop"></div>
-    <p class="note">신호일 종가에 사서 1년(250거래일) 보유했다고 본 결과이며 비용 차감 전입니다. 조건은 2025~26년 10배 종목을 보고 정한 것이라 같은 기간 성과는 실제보다 좋게 나올 수 있으니(사후 맞춤), 2024년 신호 성과를 따로 확인하세요. 현재 상장 종목만 대상입니다. 매수 권유가 아닙니다.</p>
+    <p class="note">신호일 종가에 사서 고른 매도 규칙대로(최대 1년) 판 결과이며, 1년이 지난 신호만 셉니다. 비용 차감 전입니다. 조건은 2025~26년 10배 종목을 보고 정한 것이라 같은 기간 성과는 실제보다 좋게 나올 수 있으니(사후 맞춤), 2024년 신호 성과를 따로 확인하세요. 현재 상장 종목만 대상입니다. 매수 권유가 아닙니다.</p>
   </section>
 </div>
 
@@ -880,7 +884,7 @@ $('#btSave').addEventListener('click',e=>{const b=e.target.closest('[data-sv]');
 
 /* ---------- 텐배거 ---------- */
 let TEN=null;
-const TN={dd:store.get('tn_dd','40'),rs:store.get('tn_rs','90'),og:store.get('tn_og','30'),mc:store.get('tn_mc','5000')};
+const TN={ex:store.get('tn_ex','trail'),dd:store.get('tn_dd','40'),rs:store.get('tn_rs','90'),og:store.get('tn_og','30'),mc:store.get('tn_mc','5000')};
 function tnPass(e){
   if(e.dd==null||e.dd>-TN.dd)return false;
   if(+TN.rs&&!(e.rs!=null&&e.rs>=+TN.rs))return false;
@@ -892,9 +896,10 @@ function tnPass(e){
   return true;
 }
 const med=a=>{if(!a.length)return null;const b=[...a].sort((x,y)=>x-y),m=b.length>>1;return b.length%2?b[m]:(b[m-1]+b[m])/2;};
+const tnRet=e=>TN.ex==='hold'||!e.x?e.r250:e.x[TN.ex][0];
 function tnStat(g){
-  const r=g.map(e=>e.r250);
-  return {n:g.length,w:g.filter(e=>e.r250>0).length/g.length*100,med:med(r),m:r.reduce((a,b)=>a+b,0)/g.length,
+  const r=g.map(tnRet);
+  return {n:g.length,w:r.filter(v=>v>0).length/g.length*100,hd:med(g.map(e=>TN.ex==='hold'||!e.x?250:e.x[TN.ex][1])),med:med(r),m:r.reduce((a,b)=>a+b,0)/g.length,
     m120:med(g.map(e=>e.r120)),x2:g.filter(e=>e.mx>=2).length/g.length*100,x3:g.filter(e=>e.mx>=3).length/g.length*100,
     x5:g.filter(e=>e.mx>=5).length/g.length*100,x10:g.filter(e=>e.mx>=10).length/g.length*100,dn:med(g.map(e=>e.dn)),mxd:med(g.filter(e=>e.mx>=2).map(e=>e.mxd))};
 }
@@ -925,23 +930,24 @@ function drawTen(){
   const full=TEN.ev.filter(e=>e.nf>=TEN.fwd&&e.r250!=null);
   const g=full.filter(tnPass), base=full, st=g.length?tnStat(g):null, sb=base.length?tnStat(base):null;
   const yr=y=>{const a=g.filter(e=>e.date.startsWith(y));return a.length?tnStat(a):null;};
-  const row=(n,s)=>s?`<tr><td>${n}</td><td>${s.n}</td><td>${s.w.toFixed(0)}%</td><td class="${cls(s.med)}">${pct(s.med,0)}</td><td>${s.x2.toFixed(0)}%</td><td>${s.x5.toFixed(0)}%</td></tr>`:`<tr><td>${n}</td><td>0</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>`;
+  const row=(n,s)=>s?`<tr><td>${n}</td><td>${s.n}</td><td>${s.w.toFixed(0)}%</td><td class="${cls(s.med)}">${pct(s.med,0)}</td><td class="${cls(s.m)}">${pct(s.m,0)}</td><td>${s.x2.toFixed(0)}%</td><td>${s.x5.toFixed(0)}%</td></tr>`:`<tr><td>${n}</td><td>0</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>`;
   $('#tnBt').innerHTML=st?`<div class="mute" style="font-size:13px">1년 추적이 끝난 신호 ${st.n}건 (전체 신호 ${base.length}건 중)</div>
-    <div class="big ${cls(st.med)}">${pct(st.med,0)}</div><div class="vs">1년 보유 건당 중앙값 · 승률 ${st.w.toFixed(0)}% · 평균 ${pct(st.m,0)} · 120일 중앙값 ${pct(st.m120,0)}</div>
+    <div class="big ${cls(st.med)}">${pct(st.med,0)}</div><div class="vs">${{hold:'1년 보유',stop:'손절 -15%',trail:'손절 -15% + 최고 종가 대비 -25% 매도',ma50:'손절 -15% + 50일선 이탈 매도'}[TN.ex]} 건당 중앙값 · 보유 중앙값 ${Math.round(st.hd)}거래일 · 승률 ${st.w.toFixed(0)}% · 평균 ${pct(st.m,0)} ${TN.ex==='hold'?` · 120일 중앙값 ${pct(st.m120,0)}`:''}</div>
     <div class="checks">
       <div class="ck ok"><b>${st.x2.toFixed(0)}%</b>1년 안 2배</div><div class="ck ok"><b>${st.x3.toFixed(0)}%</b>3배</div><div class="ck ok"><b>${st.x5.toFixed(0)}%</b>5배</div>
       <div class="ck ok"><b>${st.x10.toFixed(0)}%</b>10배</div><div class="ck ${st.dn<-30?'no':'ok'}"><b>${pct(st.dn,0)}</b>보유 중 최대하락 중앙값</div><div class="ck ok"><b>${st.mxd!=null?Math.round(st.mxd)+'일':'-'}</b>2배 종목 최고가까지</div>
     </div>
-    <table class="tn-t" style="margin-top:12px"><tr><th></th><th>건수</th><th>승률</th><th>1년 중앙값</th><th>2배</th><th>5배</th></tr>
+    <table class="tn-t" style="margin-top:12px"><tr><th></th><th>건수</th><th>승률</th><th>중앙값</th><th>평균</th><th>2배</th><th>5배</th></tr>
       ${row('이 조건',st)}${row('조건 없음',sb)}${['2024','2025'].map(y=>row(y+'년 신호',yr(y))).join('')}</table>`
     :`<div class="empty">1년 추적이 끝난 신호 중 조건에 맞는 것이 없습니다.</div>`;
   const top=g.length?[...g].sort((a,b)=>b.mx-a.mx).slice(0,10):[];
   $('#tnTop').innerHTML=top.length?`<h2 class="sec-title">이 조건으로 잡혔던 과거 종목 (1년 안 최고 배수 순)</h2><div class="list">`+
     top.map(e=>`<div class="pos"><span><span class="nm2">${esc(e.name)}</span><div class="sub">${e.date} 신호 · RS ${e.rs??'-'} · 영업익 ${e.og!=null?pct(e.og,0):'-'} · 저점시총 ${fmt(e.mcl)}억</div></span>
-      <span class="rt up">${e.mx}배<small>1년 뒤 <span class="${cls(e.r250)}">${pct(e.r250,0)}</span></small></span></div>`).join('')+'</div>':'';
+      <span class="rt up">${e.mx}배<small>규칙 매도 <span class="${cls(tnRet(e))}">${pct(tnRet(e),0)}</span></small></span></div>`).join('')+'</div>':'';
 }
 $('#tnList').addEventListener('click',e=>{const b=e.target.closest('.item>button');if(!b)return;
   const it=b.parentElement, o=!it.classList.contains('open');it.classList.toggle('open',o);b.setAttribute('aria-expanded',o);});
+bindSeg('tnEx',()=>TN.ex,v=>{TN.ex=v;store.set('tn_ex',v);drawTen();});
 bindSeg('tnDd',()=>TN.dd,v=>{TN.dd=v;store.set('tn_dd',v);drawTen();});
 bindSeg('tnRs',()=>TN.rs,v=>{TN.rs=v;store.set('tn_rs',v);drawTen();});
 bindSeg('tnOg',()=>TN.og,v=>{TN.og=v;store.set('tn_og',v);drawTen();});

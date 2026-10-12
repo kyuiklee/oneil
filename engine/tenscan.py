@@ -57,13 +57,36 @@ def _fund_at(fs, d):
     return {k: row.get(k, np.nan) for k in ("og", "ogp", "opm_d", "sg", "cg")}
 
 
+EXITS = {"stop": (15, None, False), "trail": (15, 25, False), "ma50": (15, None, True)}
+
+
+def _exit(op, lo, cl, ma, t, stop, trail, use_ma):
+    """신호일 t 종가 매수 → (수익률%, 보유 거래일, 끝남 여부)
+    stop: 매수가 대비 손절 % (장중 저가 기준, 시가부터 밑이면 시가)
+    trail: 매수 후 최고 종가 대비 % 하락 시 종가 매도 / use_ma: 종가가 50일선 아래면 종가 매도"""
+    e = cl[t]; px = e * (1 - stop / 100); peak = e
+    end = min(len(cl) - 1, t + FWD)
+    for j in range(t + 1, end + 1):
+        if op[j] <= px:
+            return (op[j] / e - 1) * 100, j - t, True
+        if lo[j] <= px:
+            return -stop, j - t, True
+        peak = max(peak, cl[j])
+        if trail and cl[j] <= peak * (1 - trail / 100):
+            return (cl[j] / e - 1) * 100, j - t, True
+        if use_ma and np.isfinite(ma[j]) and cl[j] < ma[j]:
+            return (cl[j] / e - 1) * 100, j - t, True
+    return (cl[end] / e - 1) * 100, end - t, end == t + FWD
+
+
 def events_for(code, h, rs_col, fs, shares):
     h = h[["Open", "High", "Low", "Close", "Volume"]].astype(float)
     h = h[~h.index.duplicated(keep="last")].sort_index()
     n = len(h)
     if n < W + MIN_AGO + 5:
         return []
-    lo, hi, cl, vol = (h[c].to_numpy() for c in ("Low", "High", "Close", "Volume"))
+    op, lo, hi, cl, vol = (h[c].to_numpy() for c in ("Open", "Low", "High", "Close", "Volume"))
+    ma50 = pd.Series(cl).rolling(50).mean().to_numpy()
     lo = np.where(lo > 0, lo, cl)
     idx = h.index
     ph = pd.Series(hi).shift(1).rolling(W, min_periods=120).max().to_numpy()   # 전날까지 52주 고가
@@ -105,6 +128,8 @@ def events_for(code, h, rs_col, fs, shares):
             for k in (60, 120, 250):
                 e[f"r{k}"] = _r((fc[min(k, len(fc)) - 1] / cl[t] - 1) * 100, 1)
             e["now"] = _r((fc[-1] / cl[t] - 1) * 100, 1)                          # 마지막 날까지 수익률
+            # 매도 규칙별 [수익률, 보유일, 끝남(1/0)]: 손절 -15% / +최고 종가 대비 -25% 추적 / +50일선 이탈
+            e["x"] = {k: (lambda r: [_r(r[0], 1), int(r[1]), int(r[2])])(_exit(op, lo, cl, ma50, t, *v)) for k, v in EXITS.items()}
         out.append(e)
     return out
 
@@ -164,7 +189,9 @@ def _report(ev):
     df = pd.DataFrame(ev)
     if df.empty or "mx" not in df:
         return
-    full = df[df["nf"] >= FWD]
+    full = df[df["nf"] >= FWD].copy()
+    for k in EXITS:
+        full[k] = [x[k][0] if isinstance(x, dict) else np.nan for x in full["x"]]
     steps = [("첫 신고가 전부(하락 -25%↑)", lambda d: d),
              ("+ 하락 -40%↑", lambda d: d[d["dd"] <= -40]),
              ("+ RS 90↑", lambda d: d[(d["dd"] <= -40) & (d["rs"] >= 90)]),
@@ -180,3 +207,4 @@ def _report(ev):
               f"평균 {g['r250'].mean():+.0f}% | 120일 중앙값 {g['r120'].median():+.0f}% | "
               f"최고 2배↑ {(g['mx'] >= 2).mean() * 100:.0f}% 3배↑ {(g['mx'] >= 3).mean() * 100:.0f}% "
               f"5배↑ {(g['mx'] >= 5).mean() * 100:.0f}% | 최대하락 중앙값 {g['dn'].median():.0f}%")
+        print("      매도규칙 " + " / ".join(f"{k} 승률 {(g[k] > 0).mean() * 100:.0f}% 중앙값 {g[k].median():+.0f}% 평균 {g[k].mean():+.0f}%" for k in EXITS))
