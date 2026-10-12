@@ -6,7 +6,7 @@ import pandas as pd
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 START = pd.Timestamp("2025-01-01")
-MULT = 10.0
+MULT = 5.0
 
 hist = pickle.load(gzip.open(os.path.join(ROOT, "cache", "hist.pkl.gz"), "rb"))
 meta = pd.read_csv(os.path.join(ROOT, "engine", "tickers.csv"), dtype={"code": str}).set_index("code")
