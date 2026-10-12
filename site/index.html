@@ -353,6 +353,10 @@ textarea.inp{min-height:70px;font-size:12px}
     </div>
     <h2 class="sec-title">관심 종목 <span class="cnt" id="tnCnt"></span></h2>
     <div class="list" id="tnList"></div>
+    <h2 class="sec-title">바닥 단계 <span class="cnt" id="btCnt2"></span></h2>
+    <p class="note" style="margin-top:0">깊이 빠진 뒤(-40% 이상) 바닥을 찍은 지 5~60거래일, 아직 52주 신고가 전인 종목입니다. 10배 종목은 이 구간에서 ① 바닥 때 이미 영업이익 급증(중앙값 +76%, 나머지 +6~19%) ② 한 달 안에 RS 80 ③ 20일 만에 +30% ④ 시장 전체가 같이 바닥(관세 폭락일 등)인 경우가 많았습니다. <b>관찰용</b>입니다. 이 단계에서 바로 사면 1년 승률이 40~51%에 그쳤으니, 첫 신고가가 나면 위 관심 종목으로 넘어가 돌파를 기다리세요.</p>
+    <div class="seg" role="group" aria-label="바닥 단계 보기" id="btmF" style="margin-bottom:8px"><button data-v="2">조건 2개↑</button><button data-v="3">3개↑</button><button data-v="0">전체</button></div>
+    <div class="list" id="btmList"></div>
     <h2 class="sec-title">과거 성과 · 관심 종목 베이스 돌파 매수</h2>
     <div class="hero" id="tnBo"></div>
     <h2 class="sec-title">참고 · 신호일에 바로 샀다면</h2>
@@ -905,6 +909,34 @@ $('#btSave').addEventListener('click',e=>{const b=e.target.closest('[data-sv]');
 
 /* ---------- 텐배거 ---------- */
 let TEN=null;
+let BTMF=store.get('btm_f','2');
+function drawBottom(){
+  const el=$('#btmList');if(!el)return;
+  const B=(TEN&&TEN.bottom)||[], arr=B.filter(b=>b.flags>=+BTMF);
+  $('#btCnt2').textContent=`${arr.length}종목${B.length?` / 전체 ${B.length}`:''}`;
+  const chip=(ok,t)=>`<span class="tag" style="${ok?'':'opacity:.35;text-decoration:line-through'}">${t}</span>`;
+  el.innerHTML=!TEN||!TEN.bottom?'<div class="empty">다음 자동 실행 뒤에 나타납니다.</div>':arr.length?arr.slice(0,40).map((b,i)=>`<div class="item"><button aria-expanded="false">
+      <span class="rk">${i+1}</span>
+      <span><div class="nm">${esc(b.name)}<span class="mk ${b.mkt}">${MKT[b.mkt]}</span></div>
+      <div class="px"><span class="mute">바닥 ${b.low_date.slice(2).replace(/-/g,'/')} (${b.ago}일 전) ·</span> 바닥 대비 <b class="up">+${b.gain}%</b> <span class="mute">· RS ${b.rs??'-'}</span></div>
+      <div style="margin-top:5px;display:flex;gap:4px;flex-wrap:wrap">${chip(b.og!=null&&b.og>=30,'영업익 '+(b.og!=null?pct(b.og,0):'-'))}${chip(b.d80!=null&&b.d80<=30,'RS80 '+(b.d80==null?'미달':b.d80===0?'바닥부터':b.d80+'일'))}${chip(b.ago>=20&&b.r20>=30,'20일 '+pct(b.r20,0))}${chip(b.mkt_low,'시장 동반 바닥')}</div></span>
+      <span class="sc"><strong>${b.flags}</strong><small class="mute" style="display:block;font-size:11.5px">/4</small></span>
+    </button><div class="detail"><dl>
+      <dt>바닥</dt><dd>${b.low_date} ${fmt(b.low)}원 · 바닥 전 고점 대비 ${b.dd}%</dd>
+      <dt>현재</dt><dd>${fmt(b.cur)}원 · 52주 고가 대비 ${pct(b.off,0)}</dd>
+      <dt>RS</dt><dd>바닥 때 ${b.rs_low??'-'} → 현재 ${b.rs??'-'}${b.d80!=null?` <span class="mute">(바닥 후 ${b.d80}거래일에 80 돌파)</span>`:''}</dd>
+      <dt>분기 영업이익</dt><dd>현재 ${b.og!=null?`<span class="${cls(b.og)}">${pct(b.og,0)}</span>`:'-'}${b.ogp!=null?` <span class="mute">(전 분기 ${pct(b.ogp,0)})</span>`:''} · 바닥 때 ${b.og_low!=null?pct(b.og_low,0):'-'}</dd>
+      <dt>바닥 후 20일</dt><dd>${b.ago>=20?pct(b.r20,0):'아직 20일 전'}</dd>
+      <dt>시장</dt><dd>${b.mkt_low?`같은 주에 바닥 찍은 종목 ${b.crowd}개 (시장 동반)`:`같은 주 바닥 ${b.crowd}개 (개별 바닥)`}</dd>
+      <dt>저점 시총</dt><dd>${b.mcl!=null?fmt(b.mcl)+'억':'-'} · 거래대금 ${fmt(b.amt)}억</dd>
+      <dt>종목코드</dt><dd>${b.code}</dd></dl>
+      <a class="go" href="https://m.stock.naver.com/domestic/stock/${b.code}/total" target="_blank" rel="noopener">네이버 차트 열기</a>
+      <button class="btn" data-pfadd="${b.code}" style="margin-top:8px">포트폴리오에 담기</button>
+    </div></div>`).join(''):'<div class="empty">조건에 맞는 바닥 단계 종목이 없습니다.</div>';
+}
+$('#btmList').addEventListener('click',e=>{const b=e.target.closest('.item>button');if(!b)return;
+  const it=b.parentElement, o=!it.classList.contains('open');it.classList.toggle('open',o);b.setAttribute('aria-expanded',o);});
+bindSeg('btmF',()=>BTMF,v=>{BTMF=v;store.set('btm_f',v);drawBottom();});
 const TN={ex:store.get('tn_ex','hold'),dd:store.get('tn_dd','40'),rs:store.get('tn_rs','90'),og:store.get('tn_og','30'),mc:store.get('tn_mc','5000')};
 function tnPass(e){
   if(e.dd==null||e.dd>-TN.dd)return false;
@@ -925,6 +957,7 @@ function tnStat(g){
     x5:g.filter(e=>e.mx>=5).length/g.length*100,x10:g.filter(e=>e.mx>=10).length/g.length*100,dn:med(g.map(e=>e.dn)),mxd:med(g.filter(e=>e.mx>=2).map(e=>e.mxd))};
 }
 function drawTen(){
+  drawBottom();
   if(!TEN){$('#tnList').innerHTML='<div class="empty">아직 텐배거 검색 결과가 없습니다. 다음 자동 실행 뒤에 나타납니다.</div>';$('#tnBt').innerHTML='';return;}
   // 같은 종목에 신호가 여러 번이면 최근 것만
   const seen=new Set(), bo=new Set((TODAY&&TODAY.cands||[]).filter(r=>r.type==='B').map(r=>r.code));
