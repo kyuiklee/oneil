@@ -172,6 +172,11 @@ def main():
     for name, obj in (("today.json", today), ("trades.json", trades), ("bench.json", bench), ("prices.json", prices)):
         with open(os.path.join(OUT, name), "w", encoding="utf-8") as f:
             json.dump(obj, f, ensure_ascii=False, separators=(",", ":"))
+    try:                                   # 텐배거 검색기 (실패해도 오늘 후보에는 영향 없음)
+        import tenscan
+        tenscan.run(hist, meta, fund, OUT)
+    except Exception as e:
+        print(f"텐배거 검색 실패: {type(e).__name__} {e}")
     nb = sum(1 for x in today["cands"] if x["type"] == "B")
     print(f"저장: 오늘 돌파 {nb} / 눌림 {len(today['cands']) - nb}, 과거 후보 {len(rows)}건, "
           f"실적 {'있음' if has_fund else '없음'}, 수출 {'있음' if has_exp else '없음'}, 상태 {status} ({time.time() - t0:.0f}초)")
