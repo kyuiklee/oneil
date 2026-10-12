@@ -355,7 +355,7 @@ textarea.inp{min-height:70px;font-size:12px}
     <div class="list" id="tnList"></div>
     <h2 class="sec-title">바닥 단계 <span class="cnt" id="btCnt2"></span></h2>
     <p class="note" style="margin-top:0">깊이 빠진 뒤(-40% 이상) 바닥을 찍은 지 5~60거래일, 아직 52주 신고가 전인 종목입니다. 10배 종목은 이 구간에서 ① 바닥 때 이미 영업이익 급증(중앙값 +76%, 나머지 +6~19%) ② 한 달 안에 RS 80 ③ 20일 만에 +30% ④ 시장 전체가 같이 바닥(관세 폭락일 등)인 경우가 많았습니다. <b>관찰용</b>입니다. 이 단계에서 바로 사면 1년 승률이 40~51%에 그쳤으니, 첫 신고가가 나면 위 관심 종목으로 넘어가 돌파를 기다리세요.</p>
-    <div class="seg" role="group" aria-label="바닥 단계 보기" id="btmF" style="margin-bottom:8px"><button data-v="2">조건 2개↑</button><button data-v="3">3개↑</button><button data-v="0">전체</button></div>
+    <div class="seg" role="group" aria-label="바닥 단계 보기" id="btmF" style="margin-bottom:8px"><button data-v="4">4개 모두</button><button data-v="3">3개↑</button><button data-v="2">2개↑</button><button data-v="0">전체</button></div>
     <div class="list" id="btmList"></div>
     <h2 class="sec-title">과거 성과 · 관심 종목 베이스 돌파 매수</h2>
     <div class="hero" id="tnBo"></div>
@@ -909,7 +909,7 @@ $('#btSave').addEventListener('click',e=>{const b=e.target.closest('[data-sv]');
 
 /* ---------- 텐배거 ---------- */
 let TEN=null;
-let BTMF=store.get('btm_f','2');
+let BTMF=store.get('btm_f2','4');
 function drawBottom(){
   const el=$('#btmList');if(!el)return;
   const B=(TEN&&TEN.bottom)||[], arr=B.filter(b=>b.flags>=+BTMF);
@@ -936,7 +936,7 @@ function drawBottom(){
 }
 $('#btmList').addEventListener('click',e=>{const b=e.target.closest('.item>button');if(!b)return;
   const it=b.parentElement, o=!it.classList.contains('open');it.classList.toggle('open',o);b.setAttribute('aria-expanded',o);});
-bindSeg('btmF',()=>BTMF,v=>{BTMF=v;store.set('btm_f',v);drawBottom();});
+bindSeg('btmF',()=>BTMF,v=>{BTMF=v;store.set('btm_f2',v);drawBottom();});
 const TN={ex:store.get('tn_ex','hold'),dd:store.get('tn_dd','40'),rs:store.get('tn_rs','90'),og:store.get('tn_og','30'),mc:store.get('tn_mc','5000')};
 function tnPass(e){
   if(e.dd==null||e.dd>-TN.dd)return false;
