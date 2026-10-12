@@ -182,6 +182,16 @@ nav button[aria-current=page]{color:var(--ink)}
 .bar2 i{display:block;height:100%;background:var(--ink)}
 .cnt{font-size:13px;font-weight:600;color:var(--sub);margin-left:6px}
 textarea.inp{min-height:70px;font-size:12px}
+.pform{display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:6px;margin-top:10px}
+.pform label{font-size:12px;color:var(--sub);display:flex;flex-direction:column;gap:3px}
+.pform .inp{padding:8px 8px;font-size:14px}
+.pdet{padding:0 14px 12px;font-size:13.5px}
+.dl2{display:grid;grid-template-columns:auto 1fr;gap:3px 14px}
+.dl2 dt{color:var(--sub)} .dl2 dd{font-weight:600}
+.mk.U{background:var(--track);color:var(--ink)}
+.mk.due{background:var(--up);color:#fff}
+.wbar{height:4px;border-radius:2px;background:var(--track);overflow:hidden;margin-top:6px;grid-column:1/-1}
+.wbar i{display:block;height:100%;background:var(--sub)}
 .tn-t th,.tn-t td{padding:7px 5px;font-size:12.5px;white-space:nowrap}
 .item>button:active{background:var(--track)}
 </style>
@@ -233,6 +243,11 @@ textarea.inp{min-height:70px;font-size:12px}
   <section class="view" id="v-strat" aria-label="내 전략">
     <div class="chips" id="stratChips" role="group" aria-label="전략 선택"></div>
     <div id="stratBody"></div>
+  </section>
+
+  <!-- ===== 포트폴리오 ===== -->
+  <section class="view" id="v-pf" aria-label="포트폴리오">
+    <div id="pfBody"></div>
   </section>
 
   <!-- ===== 기록 ===== -->
@@ -355,6 +370,7 @@ textarea.inp{min-height:70px;font-size:12px}
   <button data-v="today" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 18h4v-4h4v-4h4l4-4M3 10h18"/></svg>오늘</button>
   <button data-v="ten"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.6 5.6 6 .7-4.5 4.1 1.2 6L12 16.4 6.7 19.4l1.2-6L3.4 9.3l6-.7z"/></svg>텐배거</button>
   <button data-v="strat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg>내 전략</button>
+  <button data-v="pf"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h18v13H3zM3 7l2-3h14l2 3M16 13h2"/></svg>포트폴리오</button>
   <button data-v="log"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 4h14v16H5zM8 9h8M8 13h8M8 17h5"/></svg>기록</button>
   <button data-v="bt"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19h16M5 15l4-5 4 3 6-7"/></svg>백테스트</button>
 </div></nav>
@@ -459,6 +475,7 @@ function drawPicks(){
       <dt>목표 참고</dt><dd class="up">${fmt(tgt)}원 (+${cfg.target_pct}%)</dd>
       <dt>종목코드</dt><dd>${r.code}</dd></dl>
       <a class="go" href="https://m.stock.naver.com/domestic/stock/${r.code}/total" target="_blank" rel="noopener">네이버 차트 열기</a>
+      <button class="btn" data-pfadd="${r.code}" style="margin-top:8px">포트폴리오에 담기</button>
     </div></div>`;}).join('');
 }
 $('#picks').addEventListener('click',e=>{const b=e.target.closest('.item>button');if(!b)return;
@@ -801,7 +818,7 @@ function drawStrat(){
     ${UI.rename?`<input class="inp" id="nameIn" value="${esc(st.name)}" maxlength="20" style="margin-top:8px"><div class="btns"><button class="btn pri" data-act="renameOk">이름 저장</button><button class="btn" data-act="cancel">취소</button></div>`:''}
     ${UI.del?`<div class="warn">「${esc(st.name)}」 전략을 지울까요?</div><div class="btns"><button class="btn warn" data-act="delOk">삭제</button><button class="btn" data-act="cancel">취소</button></div>`:''}
     ${UI.backup?`<div class="note">이 코드를 복사해 두면 다른 기기나 앱을 지운 뒤에도 전략을 되살릴 수 있습니다.</div>
-      <textarea class="inp" id="bkIn">${esc(btoa(unescape(encodeURIComponent(JSON.stringify(STRATS)))))}</textarea>
+      <textarea class="inp" id="bkIn">${esc(btoa(unescape(encodeURIComponent(JSON.stringify({v:2,strats:STRATS,pf:PF})))))}</textarea>
       <div class="btns"><button class="btn" data-act="bkCopy">코드 복사</button><button class="btn pri" data-act="bkLoad">붙여 넣은 코드 불러오기</button><button class="btn" data-act="cancel">닫기</button></div><div class="note" id="bkMsg"></div>`:''}
     ${!UI.rename&&!UI.del&&!UI.backup?`<div class="btns"><button class="btn" data-act="rename">이름 바꾸기</button><button class="btn" data-act="restart">시작일을 오늘로</button><button class="btn" data-act="backup">백업·복원</button><button class="btn warn" data-act="del">삭제</button></div>`:''}
     <div class="note" style="margin-bottom:0">전략은 이 기기에만 저장됩니다. 매수·매도 목록은 종가 체결을 가정한 안내이며, 실제 주문은 직접 내야 합니다.</div></div>`;
@@ -854,8 +871,10 @@ $('#v-strat').addEventListener('click',e=>{const b=e.target.closest('[data-act]'
   }
   else if(a==='bkCopy'){const t=$('#bkIn');t.select();(navigator.clipboard?navigator.clipboard.writeText(t.value):Promise.reject()).then(()=>$('#bkMsg').textContent='복사했습니다.',()=>{try{document.execCommand('copy');$('#bkMsg').textContent='복사했습니다.';}catch(x){$('#bkMsg').textContent='자동 복사가 안 됩니다. 코드를 길게 눌러 직접 복사하세요.';}});}
   else if(a==='bkLoad'){try{const v=JSON.parse(decodeURIComponent(escape(atob($('#bkIn').value.trim()))));
-      if(!Array.isArray(v)||!v.length||!v.every(x=>x&&x.id&&x.name&&x.created&&x.S))throw 0;
-      STRATS=v;ACTIVE=STRATS[0].id;UI={};saveStrats();drawStrat();}
+      const sv=Array.isArray(v)?v:v&&v.strats;
+      if(!Array.isArray(sv)||!sv.length||!sv.every(x=>x&&x.id&&x.name&&x.created&&x.S))throw 0;
+      if(!Array.isArray(v)&&v.pf&&Array.isArray(v.pf.pos)){PF=v.pf;PF.closed=PF.closed||[];savePF();}
+      STRATS=sv;ACTIVE=STRATS[0].id;UI={};saveStrats();drawStrat();}
     catch(x){$('#bkMsg').textContent='코드를 읽지 못했습니다. 코드 전체를 빠짐없이 붙여 넣었는지 확인하세요.';}}
 });
 function loadToBT(S){
@@ -930,6 +949,7 @@ function drawTen(){
       ${dl('거래대금',`20일 평균 ${fmt(e.amt)}억`)}
       ${dl('종목코드',e.code)}</dl>
       <a class="go" href="https://m.stock.naver.com/domestic/stock/${e.code}/total" target="_blank" rel="noopener">네이버 차트 열기</a>
+      <button class="btn" data-pfadd="${e.code}" style="margin-top:8px">포트폴리오에 담기</button>
     </div></div>`).join(''):'<div class="empty">최근 신호 중 조건에 맞는 종목이 없습니다. 조건을 한 단계 낮춰 보세요.</div>';
   // 과거 성과 1: 관심 종목(신호 후 1년 안)에서 나온 베이스 돌파 후보를 사서 N거래일 보유
   const evBy={};TEN.ev.filter(tnPass).forEach(e=>(evBy[e.code]=evBy[e.code]||[]).push(Date.parse(e.date)));
@@ -972,10 +992,176 @@ bindSeg('tnRs',()=>TN.rs,v=>{TN.rs=v;store.set('tn_rs',v);drawTen();});
 bindSeg('tnOg',()=>TN.og,v=>{TN.og=v;store.set('tn_og',v);drawTen();});
 bindSeg('tnMc',()=>TN.mc,v=>{TN.mc=v;store.set('tn_mc',v);drawTen();});
 
+/* ---------- 포트폴리오 ---------- */
+// PF.pos: {id, code(국내 6자리, 해외·목록 밖이면 null), name, mkt(K/Q/U), cur(KRW/USD), date, qty, price, mp(직접 넣은 현재가), stop, tgt, memo}
+let PF=store.get('pf',null);
+if(!PF||!Array.isArray(PF.pos)) PF={fee:0.25,fx:null,pos:[],closed:[]};
+PF.closed=PF.closed||[];
+const savePF=()=>store.set('pf',PF);
+let PUI={};
+const num=v=>{const x=parseFloat(String(v).replace(/[^0-9.]/g,''));return isNaN(x)?0:x;};
+const pinfo=c=>c&&PRICES&&PRICES.p&&PRICES.p[c]?{close:PRICES.p[c][0],chg:PRICES.p[c][1],name:PRICES.p[c][2],mkt:PRICES.p[c][3]}:null;
+const money=(v,c)=>c==='USD'?'$'+(Math.round(v*100)/100).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}):won(v);
+const sgn=(v,c)=>(v>=0?'+':'-')+money(Math.abs(v),c);
+function pfForm(pre,v,ok,label){
+  return `<div class="pform">
+    <label>날짜<input class="inp" type="date" id="${pre}D" value="${v.date||''}"></label>
+    <label>수량(주)<input class="inp" id="${pre}Q" inputmode="decimal" value="${v.qty??''}" placeholder="0"></label>
+    <label>${v.plabel||'매입가'}${v.cur==='USD'?'($)':'(원)'}<input class="inp" id="${pre}P" inputmode="decimal" value="${v.price??''}"></label>
+    ${v.extra||''}
+    <div class="btns" style="grid-column:1/-1;margin-top:2px"><button class="btn pri" data-act="${ok}">${label}</button><button class="btn" data-act="close">취소</button></div>
+    <div class="note" id="${pre}M" style="grid-column:1/-1;margin:0"></div></div>`;}
+function pfRead(pre,maxQty){
+  const d=$('#'+pre+'D').value, q=num($('#'+pre+'Q').value), p=num($('#'+pre+'P').value), m=$('#'+pre+'M');
+  if(!d){m.textContent='날짜를 넣어 주세요.';return null;}
+  if(!(q>0)){m.textContent='수량을 넣어 주세요.';return null;}
+  if(maxQty!=null&&q>maxQty+1e-9){m.textContent=`보유 수량(${maxQty}주)보다 많이 팔 수 없습니다.`;return null;}
+  if(!(p>0)){m.textContent='가격을 넣어 주세요.';return null;}
+  return {date:d,qty:q,price:p};}
+function pfRow(p){
+  const q=pinfo(p.code), krw=p.cur!=='USD', fx=krw?1:(+PF.fx||0);
+  const cur=q?q.close:(p.mp||null), cost=p.qty*p.price, val=cur!=null?p.qty*cur:cost;
+  const today=q&&p.date<PRICES.date?p.qty*q.close*(1-1/(1+(q.chg||0)/100)):0;
+  const k=q&&PRICES?tdBetween(p.date,PRICES.date):null;
+  return {...p,q,krw,fx,curP:cur,cost,val,pnl:val-cost,rate:cur!=null?(cur/p.price-1)*100:null,today,k,
+    stopHit:p.stop&&cur!=null&&cur<=p.stop,tgtHit:p.tgt&&cur!=null&&cur>=p.tgt};
+}
+// 내 전략의 '실제 보유'도 함께 보여 줌 (수정은 내 전략 탭에서)
+function stratRows(){
+  const out=[];
+  for(const st of STRATS) for(const x of (st.hold||[])) out.push({...pfRow({...x,cur:'KRW',mkt:x.mkt||'K'}),strat:st.name,sid:st.id,sd:sellDateOf(x,{...DEF_S,...st.S})});
+  return out;
+}
+function drawPF(){
+  const el=$('#pfBody');
+  if(!TODAY){el.innerHTML='<div class="empty">데이터를 불러오는 중입니다.</div>';return;}
+  const F=+PF.fee||0, rows=PF.pos.map(pfRow), srows=stratRows(), all=rows.concat(srows);
+  const noFx=all.some(r=>!r.krw)&&!(+PF.fx>0);
+  const inT=all.filter(r=>r.krw||+PF.fx>0);
+  const tc=inT.reduce((a,r)=>a+r.cost*r.fx,0), tv=inT.reduce((a,r)=>a+r.val*r.fx,0), tp=tv-tc, td=inT.reduce((a,r)=>a+r.today*r.fx,0);
+  const cl=PF.closed.map(c=>{const fx=c.cur==='USD'?(+PF.fx||0):1,g=(c.sprice-c.bprice)*c.qty,fee=c.bprice*c.qty*F/100;return {...c,fx,net:g-fee,rate:(c.sprice/c.bprice-1)*100-F};});
+  const rsum=cl.reduce((a,c)=>a+c.net*c.fx,0);
+  const pd=PRICES?PRICES.date:TODAY.trade_date;
+  let h=`<div class="hero"><div class="mute" style="font-size:13px">평가손익 · 국내 ${md(pd)} 종가 기준 · 비용 전</div>
+    <div class="big ${cls(tp)}">${sgn(tp)}</div>
+    <div class="vs">${all.length?`<b class="${cls(tp)}">${pct(tc?tp/tc*100:0)}</b> · 오늘 <b class="${cls(td)}">${sgn(td)}</b>`:'보유 종목이 없습니다'}</div>
+    <div class="stats"><div>총 매입<b>${won(tc)}</b></div><div>총 평가<b>${won(tv)}</b></div><div>보유<b>${all.length}종목</b></div></div>
+    ${cl.length?`<div class="note" style="margin-bottom:0">실현 손익 <b class="${cls(rsum)}">${sgn(rsum)}</b> (비용 ${F}% 차감) · 합계 <b class="${cls(tp+rsum)}">${sgn(tp+rsum)}</b></div>`:''}</div>`;
+  if(noFx) h+=`<div class="warn">해외 종목이 있지만 환율이 없어 합계에서 뺐습니다. 아래 설정에서 원/달러 환율을 넣어 주세요.</div>`;
+  const alerts=all.filter(r=>r.stopHit||r.tgtHit||(r.sd&&kst().date>=r.sd));
+  if(alerts.length) h+=`<div class="warn"><b>확인할 종목 ${alerts.length}개</b><br>${alerts.map(r=>`${esc(r.name)} — ${r.stopHit?'손절가 도달':r.tgtHit?'목표가 도달':r.sd===kst().date?'오늘 매도일':'매도일 지남'}`).join('<br>')}</div>`;
+
+  // 보유 종목 (평가금액 큰 순)
+  const sorted=all.slice().sort((a,b)=>b.val*b.fx-a.val*a.fx);
+  h+=`<h2 class="sec-title">보유 종목<span class="cnt">${all.length}종목</span></h2><div class="list">`;
+  h+=sorted.length?sorted.map(r=>{
+    const w=tv?r.val*r.fx/tv*100:0, open=!r.sid&&[PUI.open,PUI.sell,PUI.edit,PUI.del,PUI.buy,PUI.mp].includes(r.id);
+    const mk=r.krw?(r.q?r.q.mkt:r.mkt):'U', mkT=r.krw?MKT[mk]||'기타':'해외';
+    let x=`<div class="pos" ${r.sid?'':`data-act="toggle" data-id="${r.id}" style="cursor:pointer"`}><div><div class="nm2">${esc(r.name)}<span class="mk ${mk}">${mkT}</span>${r.stopHit||r.tgtHit?'<span class="mk due">확인</span>':''}</div>
+      <div class="sub">${fmt(r.qty)}주 · ${money(r.price,r.cur)} → ${r.curP!=null?money(r.curP,r.cur):'현재가 없음'}${r.q?` <span class="${cls(r.q.chg)}">${pct(r.q.chg)}</span>`:r.mp?' <span class="mute">(직접 입력)</span>':''} · 비중 ${w.toFixed(1)}%${r.strat?` · 전략 ${esc(r.strat)}`:''}</div></div>
+      <div class="rt">${r.rate!=null?`<span class="${cls(r.pnl)}">${pct(r.rate)}</span><small class="${cls(r.pnl)}">${sgn(r.pnl,r.cur)}</small>`:'<span class="mute">-</span>'}</div>
+      <div class="wbar"><i style="width:${Math.min(100,w)}%"></i></div></div>`;
+    if(open){
+      x+=`<div class="pdet"><dl class="dl2"><dt>매수일</dt><dd>${r.date.replaceAll('-','.')}${r.k!=null?` <span class="mute">(${r.k}거래일째)</span>`:''}</dd>
+        <dt>매입금액</dt><dd>${money(r.cost,r.cur)}</dd><dt>평가금액</dt><dd>${money(r.val,r.cur)}${!r.krw&&+PF.fx>0?` <span class="mute">≈ ${won(r.val*r.fx)}</span>`:''}</dd>
+        ${r.stop?`<dt>손절가</dt><dd class="dn">${money(r.stop,r.cur)} <span class="mute">(${pct((r.stop/r.price-1)*100,1)})</span></dd>`:''}
+        ${r.tgt?`<dt>목표가</dt><dd class="up">${money(r.tgt,r.cur)} <span class="mute">(${pct((r.tgt/r.price-1)*100,1)})</span></dd>`:''}
+        ${r.memo?`<dt>메모</dt><dd>${esc(r.memo)}</dd>`:''}
+        ${r.code?`<dt>종목코드</dt><dd>${r.code}</dd>`:''}</dl>`;
+      if(PUI.sell===r.id) x+=pfForm('s_',{date:kst().date,qty:r.qty,price:r.curP||'',plabel:'매도가',cur:r.cur},'sellOk','매도 기록');
+      else if(PUI.buy===r.id) x+=pfForm('b_',{date:kst().date,price:r.curP||'',cur:r.cur},'buyOk','추가 매수 (평단 합치기)');
+      else if(PUI.edit===r.id) x+=pfForm('e_',{date:r.date,qty:r.qty,price:r.price,cur:r.cur,extra:`
+        <label>손절가<input class="inp" id="e_S" inputmode="decimal" value="${r.stop||''}" placeholder="없음"></label>
+        <label>목표가<input class="inp" id="e_T" inputmode="decimal" value="${r.tgt||''}" placeholder="없음"></label>
+        <label>메모<input class="inp" id="e_N" value="${esc(r.memo||'')}"></label>`},'editOk','수정 저장');
+      else if(PUI.mp===r.id) x+=`<div class="pform"><label style="grid-column:1/-1">현재가${r.cur==='USD'?'($)':'(원)'}<input class="inp" id="m_P" inputmode="decimal" value="${r.mp||''}"></label>
+        <div class="btns" style="grid-column:1/-1;margin-top:2px"><button class="btn pri" data-act="mpOk">저장</button><button class="btn" data-act="close">취소</button></div></div>`;
+      else if(PUI.del===r.id) x+=`<div class="warn" style="margin:8px 0 0">${esc(r.name)} 보유 기록을 지울까요? 팔았다면 ‘매도 기록’을 쓰세요.</div><div class="btns"><button class="btn warn" data-act="delOk" data-id="${r.id}">지우기</button><button class="btn" data-act="close">취소</button></div>`;
+      else x+=`<div class="btns"><button class="btn pri" data-act="sell" data-id="${r.id}">매도 기록</button><button class="btn" data-act="buy" data-id="${r.id}">추가 매수</button><button class="btn" data-act="edit" data-id="${r.id}">수정·손절·목표</button>
+        ${r.q?'':`<button class="btn" data-act="mp" data-id="${r.id}">현재가 입력</button>`}<button class="btn warn" data-act="del" data-id="${r.id}">삭제</button>
+        ${r.code?`<a class="btn" href="https://m.stock.naver.com/domestic/stock/${r.code}/total" target="_blank" rel="noopener" style="text-decoration:none">차트</a>`:''}</div>`;
+      x+=`</div>`;}
+    return x;}).join('')
+    :`<div class="empty">아직 담은 종목이 없습니다. 아래에서 검색해 추가하거나, 오늘·텐배거 탭의 종목에서 ‘포트폴리오에 담기’를 누르세요.</div>`;
+  h+=`</div>`;
+  if(srows.length) h+=`<p class="note">‘전략’ 표시 종목은 내 전략 탭의 실제 보유에서 온 것이라 그 탭에서 고치고 매도합니다.</p>`;
+
+  // 직접 추가
+  h+=`<h2 class="sec-title">종목 추가</h2><div class="hero">
+    <input class="inp" id="pfSearch" placeholder="종목명 또는 코드 (예: 삼성SDI, 006400)" value="${esc(PUI.search||'')}" autocomplete="off">
+    <div id="pfResults"></div></div>`;
+
+  // 매도 기록
+  h+=`<h2 class="sec-title">매도 기록<span class="cnt">${cl.length}건</span></h2>`;
+  if(cl.length){
+    const rw=cl.filter(c=>c.net>0).length/cl.length*100, avg=cl.reduce((a,c)=>a+c.rate,0)/cl.length;
+    h+=`<div class="hero"><div class="stats" style="margin-top:0"><div>실현 손익<b class="${cls(rsum)}">${sgn(rsum)}</b></div><div>승률<b>${rw.toFixed(0)}%</b></div><div>건당 평균<b class="${cls(avg)}">${pct(avg)}</b></div></div></div>
+      <div class="list" style="margin-top:8px">`+cl.slice().sort((a,b)=>a.sdate<b.sdate?1:a.sdate>b.sdate?-1:(a.id<b.id?1:-1)).map(c=>`<div class="pos" data-act="ctoggle" data-id="${c.id}" style="cursor:pointer"><div><div class="nm2">${esc(c.name)}</div>
+        <div class="sub">${md(c.bdate)} → ${md(c.sdate)} · ${fmt(c.qty)}주 · ${money(c.bprice,c.cur)} → ${money(c.sprice,c.cur)}</div></div>
+        <div class="rt"><span class="${cls(c.net)}">${pct(c.rate)}</span><small class="${cls(c.net)}">${sgn(c.net,c.cur)}</small></div></div>
+        ${PUI.delc===c.id?`<div class="pdet"><div class="btns" style="margin-top:0"><button class="btn warn" data-act="delcOk" data-id="${c.id}">이 매도 기록 지우기</button><button class="btn" data-act="close">취소</button></div></div>`:''}`).join('')+`</div>`;
+  } else h+=`<div class="empty">아직 매도 기록이 없습니다.</div>`;
+
+  // 설정
+  h+=`<h2 class="sec-title">설정</h2><div class="hero">
+    <label class="ctl-row" for="pfFee" style="margin-top:0"><span>왕복 비용 (수수료+세금, %)</span></label>
+    <input class="inp" id="pfFee" inputmode="decimal" value="${F}">
+    <label class="ctl-row" for="pfFx"><span>원/달러 환율</span><small>해외 종목 합계용 · 직접 입력</small></label>
+    <input class="inp" id="pfFx" inputmode="decimal" value="${PF.fx||''}" placeholder="예: 1380">
+    <div class="note" style="margin-bottom:0">국내 종목 현재가는 자동 검색 시점(평일 15:12·15:33·16:05)의 가격이라 실시간 시세와 다를 수 있습니다. 해외 종목과 목록에 없는 종목은 ‘현재가 입력’으로 직접 넣습니다. 포트폴리오는 이 기기에만 저장되며, 내 전략 탭의 ‘백업·복원’ 코드에 함께 들어갑니다.</div></div>`;
+  el.innerHTML=h;
+  drawPfSearch();
+  $('#pfFee').onchange=e=>{PF.fee=Math.max(0,Math.min(5,num(e.target.value)));savePF();drawPF();};
+  $('#pfFx').onchange=e=>{PF.fx=num(e.target.value)||null;savePF();drawPF();};
+  const se=$('#pfSearch');se.oninput=()=>{PUI.search=se.value;PUI.add=null;drawPfSearch();};
+  if(PUI.add){const f=$('#a_Q');if(f){f.scrollIntoView({block:'center'});}}
+}
+function drawPfSearch(){
+  const box=$('#pfResults');if(!box)return;const q=(PUI.search||'').trim();
+  if(!q){box.innerHTML='';return;}
+  const ql=q.toLowerCase(), hits=PRICES&&PRICES.p?Object.entries(PRICES.p).filter(([c,v])=>c.startsWith(q)||v[2].toLowerCase().includes(ql)).slice(0,8):[];
+  const addForm=(code,v)=>`<div style="grid-column:1/-1">${pfForm('a_',{date:TODAY.trade_date,price:v?v[0]:'',cur:PUI.cur||'KRW',extra:code?'':`
+      <label>통화<select class="inp" id="a_C"><option value="KRW">원</option><option value="USD" ${PUI.cur==='USD'?'selected':''}>달러</option></select></label>`},'addOk','포트폴리오에 담기')}</div>`;
+  box.innerHTML=`<div class="list" style="margin-top:8px">`+hits.map(([c,v])=>`<div class="pos"><div><div class="nm2">${esc(v[2])}<span class="mk ${v[3]}">${MKT[v[3]]}</span></div><div class="sub">${c} · ${fmt(v[0])}원 <span class="${cls(v[1])}">${pct(v[1])}</span></div></div>
+      <div class="rt"><button class="btn" data-act="add" data-code="${c}">추가</button></div>${PUI.add===c?addForm(c,v):''}</div>`).join('')+
+    `<div class="pos"><div><div class="nm2">‘${esc(q)}’ 직접 입력</div><div class="sub">해외 주식·ETF 등 목록에 없는 종목 (현재가는 직접 입력)</div></div>
+      <div class="rt"><button class="btn" data-act="add" data-code="">추가</button></div>${PUI.add===''?addForm('',null):''}</div></div>`;
+}
+$('#v-pf').addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(!b||b.tagName==='A')return;
+  if(e.target.closest('input,select'))return;
+  const a=b.dataset.act,id=b.dataset.id,keep={search:PUI.search};
+  const P=x=>PF.pos.find(y=>y.id===x);
+  if(a==='toggle'){PUI=PUI.open===id?keep:{...keep,open:id};drawPF();}
+  else if(a==='ctoggle'){PUI=PUI.delc===id?keep:{...keep,delc:id};drawPF();}
+  else if(a==='close'){PUI=keep;drawPF();}
+  else if(['sell','edit','del','buy','mp'].includes(a)){PUI={...keep,[a]:id};drawPF();}
+  else if(a==='sellOk'){const p=P(PUI.sell),f=pfRead('s_',p.qty);if(!f)return;
+    PF.closed.push({id:'c'+Date.now(),code:p.code,name:p.name,cur:p.cur,bdate:p.date,sdate:f.date,qty:f.qty,bprice:p.price,sprice:f.price});
+    p.qty=Math.round((p.qty-f.qty)*1e6)/1e6;if(p.qty<=0)PF.pos=PF.pos.filter(x=>x.id!==p.id);savePF();PUI=keep;drawPF();}
+  else if(a==='buyOk'){const p=P(PUI.buy),f=pfRead('b_');if(!f)return;
+    const q=p.qty+f.qty;p.price=Math.round((p.qty*p.price+f.qty*f.price)/q*100)/100;p.qty=q;savePF();PUI=keep;drawPF();}
+  else if(a==='editOk'){const p=P(PUI.edit),f=pfRead('e_');if(!f)return;
+    Object.assign(p,{date:f.date,qty:f.qty,price:f.price,stop:num($('#e_S').value)||null,tgt:num($('#e_T').value)||null,memo:$('#e_N').value.trim()});savePF();PUI=keep;drawPF();}
+  else if(a==='mpOk'){const p=P(PUI.mp);p.mp=num($('#m_P').value)||null;savePF();PUI=keep;drawPF();}
+  else if(a==='delOk'){PF.pos=PF.pos.filter(x=>x.id!==id);savePF();PUI=keep;drawPF();}
+  else if(a==='delcOk'){PF.closed=PF.closed.filter(x=>x.id!==id);savePF();PUI=keep;drawPF();}
+  else if(a==='add'){PUI={...keep,add:b.dataset.code};drawPfSearch();}
+  else if(a==='addOk'){const f=pfRead('a_');if(!f)return;const c=PUI.add,v=c&&PRICES.p[c];
+    const cur=c?'KRW':($('#a_C')?$('#a_C').value:'KRW');
+    PF.pos.push({id:'p'+Date.now()+Math.floor(Math.random()*1e3),code:c||null,name:v?v[2]:(PUI.search||'').trim(),mkt:v?v[3]:(cur==='USD'?'U':'K'),cur,
+      date:f.date,qty:f.qty,price:f.price,mp:c?null:f.price});
+    savePF();PUI={};drawPF();}
+});
+$('#v-pf').addEventListener('change',e=>{if(e.target.id==='a_C'){PUI.cur=e.target.value;}});
+// 오늘·텐배거 탭의 '포트폴리오에 담기'
+document.addEventListener('click',e=>{const b=e.target.closest('[data-pfadd]');if(!b)return;
+  const c=b.dataset.pfadd,v=PRICES&&PRICES.p&&PRICES.p[c];
+  PUI={search:v?v[2]:c,add:c};go('pf');});
+
 /* ---------- 탭 ---------- */
 $$('nav button').forEach(b=>b.onclick=()=>{$$('nav button').forEach(x=>x.removeAttribute('aria-current'));b.setAttribute('aria-current','page');
   $$('.view').forEach(v=>v.classList.toggle('on',v.id==='v-'+b.dataset.v));window.scrollTo(0,0);
-  if(b.dataset.v==='strat')drawStrat();});
+  if(b.dataset.v==='strat')drawStrat();if(b.dataset.v==='pf')drawPF();});
 
 /* ---------- 데이터 불러오기 ---------- */
 async function load(){
@@ -987,7 +1173,7 @@ async function load(){
   // 관세청 키가 없으면 수출 조건 줄을 숨김
   $$('.xwrap').forEach(x=>x.style.display=EXPD?'':'none');
   if(TR)prepTrades();
-  drawClock();drawHeader();drawPicks();drawLog();drawBT();drawStrat();drawTen();
+  drawClock();drawHeader();drawPicks();drawLog();drawBT();drawStrat();drawTen();drawPF();
 }
 drawClock();setInterval(drawClock,30000);load();
 document.addEventListener('visibilitychange',()=>{if(!document.hidden){drawClock();load();}});
