@@ -134,6 +134,73 @@ def events_for(code, h, rs_col, fs, shares):
     return out
 
 
+def bottoms(hist, meta, fund, RS):
+    """바닥 단계 (관찰용): 최근 250일 최저가 후 5~60거래일, 저점 전 52주 고점 대비 -40% 이상 하락, 아직 52주 신고가 전
+    10배 종목이 이 구간에서 보인 차이: 바닥 때 이미 영업이익 급증, 한 달 안에 RS 80, 20일 안에 +30% 추진, 시장 동반 바닥"""
+    out, lows = [], {}
+    for code, h in hist.items():
+        try:
+            h = h[["High", "Low", "Close", "Volume"]].astype(float)
+            h.index = pd.to_datetime(h.index).normalize()
+            h = h[~h.index.duplicated(keep="last")].sort_index()
+            n = len(h)
+            if n < W + 30:
+                continue
+            lo, hi, cl, vol = (h[c].to_numpy() for c in ("Low", "High", "Close", "Volume"))
+            lo = np.where(lo > 0, lo, cl)
+            L = n - W + int(np.argmin(lo[-W:]))
+            ago = n - 1 - L
+            lows[h.index[L]] = lows.get(h.index[L], 0) + 1      # 전 종목의 250일 저점 날짜 (시장 동반 바닥 판단용)
+            if ago < 5 or ago > 60 or cl[-1] < MIN_PRICE:
+                continue
+            amt20 = float((cl[-20:] * vol[-20:]).mean() / 1e8)
+            if amt20 < MIN_AMT:
+                continue
+            ph = hi[max(0, L - W):L].max() if L > 120 else np.nan
+            if not np.isfinite(ph):
+                continue
+            dd = (lo[L] / ph - 1) * 100
+            if dd > -40:
+                continue
+            if cl[-1] >= hi[-W - 1:-1].max():               # 이미 52주 신고가 → 텐배거 신호 쪽
+                continue
+            idx = h.index
+            fs = fund.get(code) if fund else None
+            f_now, f_low = _fund_at(fs, idx[-1]), _fund_at(fs, idx[L])
+            rs_col = RS[code] if RS is not None and code in RS else None
+            rsv = lambda d: (lambda v: None if not np.isfinite(v) else int(v))(rs_col.get(d, np.nan)) if rs_col is not None else None
+            rs_seq = [rsv(d) for d in idx[L:]]
+            d80 = next((i for i, v in enumerate(rs_seq) if v is not None and v >= 80), None)
+            r20 = (cl[min(L + 20, n - 1)] / lo[L] - 1) * 100
+            sh = meta["shares"].get(code, np.nan) if "shares" in meta else np.nan
+            try:
+                sh = float(sh)
+            except (TypeError, ValueError):
+                sh = np.nan
+            out.append({"code": code, "name": str(meta["name"].get(code, "")),
+                        "mkt": "Q" if meta["market"].get(code) == "KOSDAQ" else "K",
+                        "low_date": f"{idx[L]:%Y-%m-%d}", "low": int(round(lo[L])), "ago": int(ago), "dd": _r(dd, 0),
+                        "cur": int(round(cl[-1])), "gain": _r((cl[-1] / lo[L] - 1) * 100, 0), "r20": _r(r20, 0),
+                        "off": _r((cl[-1] / hi[-W:].max() - 1) * 100, 0),
+                        "rs": rs_seq[-1], "rs_low": rs_seq[0], "d80": d80,
+                        "og": _r(f_now.get("og"), 0), "ogp": _r(f_now.get("ogp"), 0), "og_low": _r(f_low.get("og"), 0),
+                        "mcl": _r(lo[L] * sh / 1e8, 0) if np.isfinite(sh) else None, "amt": _r(amt20, 0)})
+        except Exception as e:
+            print(f"바닥 단계 {code}: {type(e).__name__} {e}")
+    # 시장 동반 바닥: 같은 날(±2거래일) 바닥을 찍은 종목이 많으면 시장 전체 패닉 저점
+    tot = max(1, sum(lows.values()))
+    for b in out:
+        d = pd.Timestamp(b["low_date"])
+        near = sum(c for x, c in lows.items() if abs((x - d).days) <= 3)
+        b["crowd"] = near
+    for b in out:
+        b["mkt_low"] = b["crowd"] >= tot * 0.05                 # 전 종목의 5% 이상이 같은 주에 1년 최저가
+        b["flags"] = int(b["og"] is not None and b["og"] >= 30) + int(b["d80"] is not None and b["d80"] <= 30) + \
+            int(b["r20"] is not None and b["ago"] >= 20 and b["r20"] >= 30) + int(b["mkt_low"])
+    out.sort(key=lambda b: (-b["flags"], -(b["rs"] or 0)))
+    return out
+
+
 def run(hist, meta, fund, out_dir):
     t0 = time.time()
     try:
@@ -174,13 +241,19 @@ def run(hist, meta, fund, out_dir):
         if RS is not None and e["code"] in RS:
             v = RS[e["code"]].iloc[-1]
             e["rs_now"] = None if not np.isfinite(v) else int(v)
-    res = {"date": f"{last:%Y-%m-%d}", "fwd": FWD, "recent_days": RECENT, "fund": bool(fund),
+    try:
+        bot = bottoms(hist, meta, fund, RS)
+    except Exception as e:
+        print(f"바닥 단계 실패: {type(e).__name__} {e}")
+        bot = []
+    res = {"date": f"{last:%Y-%m-%d}", "fwd": FWD, "recent_days": RECENT, "fund": bool(fund), "bottom": bot,
            "note": "신호=최근 250일 저점 후 첫 종가 52주 신고가. 성과는 신호일 종가 매수 기준, 비용 차감 전. 현재 상장 종목만",
            "recent": recent, "ev": ev}
     os.makedirs(out_dir, exist_ok=True)
     with open(os.path.join(out_dir, "ten.json"), "w", encoding="utf-8") as f:
         json.dump(res, f, ensure_ascii=False, separators=(",", ":"))
     _report(ev)
+    print(f"바닥 단계 {len(bot)}종목 (조건 2개 이상 {sum(1 for b in bot if b['flags'] >= 2)})")
     print(f"텐배거 검색: 신호 {len(ev)}건, 최근 {RECENT}거래일 {len(recent)}건 ({time.time() - t0:.0f}초)")
 
 
