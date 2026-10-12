@@ -48,6 +48,7 @@ jobs:
           set -o pipefail
           python -u engine/build.py 2>&1 | tee run.log
           python -u engine/tenbagger.py 2>&1 | tee -a run.log
+          python -u engine/pattern_scan.py 2>&1 | tee -a run.log
 
       - name: 실행 기록을 run-output 브랜치에 저장 (점검용, 매번 덮어씀)
         if: always()
