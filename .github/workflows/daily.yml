@@ -40,12 +40,13 @@ jobs:
           restore-keys: data-
 
       - name: 검색 실행
+        timeout-minutes: 30
         env:
           DART_API_KEY: ${{ secrets.DART_API_KEY }}
           CUSTOMS_API_KEY: ${{ secrets.CUSTOMS_API_KEY }}
         run: |
           set -o pipefail
-          python engine/build.py 2>&1 | tee run.log
+          python -u engine/build.py 2>&1 | tee run.log
 
       - name: 실행 기록을 run-output 브랜치에 저장 (점검용, 매번 덮어씀)
         if: always()

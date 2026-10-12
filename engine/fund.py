@@ -65,9 +65,9 @@ class Limit(Exception):
 
 def _fetch(key, corps, year, reprt):
     params = {"crtfc_key": key, "corp_code": ",".join(corps), "bsns_year": str(year), "reprt_code": reprt}
-    for attempt in range(4):
+    for attempt in range(3):
         try:
-            j = requests.get(f"{API}/fnlttMultiAcnt.json", params=params, timeout=40).json()
+            j = requests.get(f"{API}/fnlttMultiAcnt.json", params=params, timeout=(10, 25)).json()
             st = j.get("status")
             if st == "000":
                 return j.get("list", [])
@@ -140,7 +140,11 @@ def load_raw(codes, key, refresh_hours=20):
     batches = [corps[i:i + 100] for i in range(0, len(corps), 100)]
     print(f"DART 요청 {len(todo)}개 보고서 × {len(batches)}묶음")
     t0 = time.time()
+    budget = float(os.environ.get("DART_BUDGET_SEC", "420"))   # DART가 느린 날에도 검색이 끝나도록 수집 시간 상한
     for k in todo:
+        if time.time() - t0 > budget:
+            print(f"DART 수집 시간 상한 {budget:.0f}초 초과 — 남은 보고서는 다음 실행 때 받고 캐시 값 사용")
+            break
         try:
             with ThreadPoolExecutor(3) as ex:
                 res = list(ex.map(lambda b: _fetch(key, b, k[0], k[1]), batches))
