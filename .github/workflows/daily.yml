@@ -46,7 +46,7 @@ jobs:
           CUSTOMS_API_KEY: ${{ secrets.CUSTOMS_API_KEY }}
         run: |
           set -o pipefail
-          python -u engine/pre_scan.py 2>&1 | tee run.log
+          python -u engine/ma_scan.py 2>&1 | tee run.log
 
       - name: 실행 기록을 run-output 브랜치에 저장 (점검용, 매번 덮어씀)
         if: always()
