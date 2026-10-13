@@ -10,13 +10,16 @@ ROOT = D.ROOT
 hist = pickle.load(gzip.open(os.path.join(ROOT, "cache", "hist.pkl.gz"), "rb"))
 raw = pickle.load(gzip.open(os.path.join(ROOT, "cache", "fund.pkl.gz"), "rb"))["raw"]
 import FinanceDataReader as fdr
-desc = fdr.StockListing("KRX-DESC")
-print("KRX-DESC 열", list(desc.columns))
-desc = desc.rename(columns={"Code": "code", "Name": "name", "Industry": "ind", "Sector": "ind2"})
-desc["code"] = desc["code"].astype(str).str.zfill(6)
-ind = desc.set_index("code")
+ind = pd.DataFrame(columns=["ind"])
+for src in ("KRX-DESC", "KOSDAQ-DESC"):
+    try:
+        d = fdr.StockListing(src).rename(columns={"Code": "code", "Industry": "ind"})
+        d["code"] = d["code"].astype(str).str.zfill(6); ind = d.set_index("code")[["ind"]]; break
+    except Exception as e:
+        print("업종 목록 실패", src, e)
 lst = fdr.StockListing("KRX").rename(columns={"Code": "code", "Stocks": "shares", "Marcap": "mcap"})
 lst["code"] = lst["code"].astype(str).str.zfill(6); lst = lst.set_index("code")
+print("KRX 열", list(lst.columns)[:12])
 
 EXTRA = """솔브레인 동진쎄미켐 원익QnC 하나머티리얼즈 티씨케이 월덱스 케이엔제이 에스앤에스텍 덕산테코피아 이엔에프테크놀로지 램테크놀러지 미코 코미코
 영창케미칼 한솔케미칼 피에스케이홀딩스 ISC 리노공업 티에스이 마이크로컨텍솔 오킨스전자 샘씨엔에스 디아이 유니테스트 와이씨 네오셈 엑시콘 하나마이크론
@@ -29,7 +32,7 @@ SFA반도체 두산테스나 엘비세미콘 테스 유진테크 원익IPS 주�
 names = set(EXTRA)
 def is_semi(code):
     if code in ind.index:
-        s = f"{ind.at[code, 'ind']} {ind.at[code, 'ind2'] if 'ind2' in ind else ''}"
+        s = str(ind.at[code, "ind"])
         if "반도체" in s: return True
     nm = str(lst["Name"].get(code, "")) if "Name" in lst else ""
     return nm in names
