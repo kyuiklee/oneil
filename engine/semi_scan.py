@@ -64,8 +64,9 @@ roc = lambda n: CL / CL.shift(n) - 1
 RS = (0.4 * roc(63) + 0.2 * roc(126) + 0.2 * roc(189) + 0.2 * roc(252)).rank(axis=1, pct=True).iloc[-1] * 98 + 1
 
 rows = []
+ALL = os.environ.get("SCAN_ALL") == "1"
 for code, h in hist.items():
-    if not is_semi(code): continue
+    if not ALL and not is_semi(code): continue
     h = h.astype(float); h.index = pd.to_datetime(h.index); h = h[~h.index.duplicated()].sort_index()
     if len(h) < 260: continue
     cl = h["Close"].iloc[-1]; sh = lst["shares"].get(code, np.nan)
@@ -81,6 +82,9 @@ for code, h in hist.items():
     opq = [Q[q].get("op", np.nan) for q in qs[-5:]]
     og = (opq[-1] / opq[0] - 1) * 100 if len(opq) == 5 and opq[0] > 0 else (100.0 if len(opq) == 5 and opq[-1] > 0 >= opq[0] else np.nan)
     eq = A.get(max(A)) if A else np.nan
+    op8 = [Q.get(q, {}).get("op", np.nan) for q in qs[-8:]]
+    yoy = [(Q[q]["op"] / Q[q - 4]["op"] - 1) * 100 for q in qs[-8:] if q - 4 in Q and np.isfinite(Q[q].get("op", np.nan)) and np.isfinite(Q[q - 4].get("op", np.nan)) and Q[q - 4]["op"] > 0]
+    op4p = ttm("op", last - 4)
     hi52, lo52 = h["High"].iloc[-250:].max(), h["Low"].iloc[-250:].min()
     rows.append(dict(code=code, name=str(lst["Name"].get(code, "")), ind=str(ind["ind"].get(code, ""))[:14], mcap=round(mcap), amt=round(amt20, 1),
                      op4=round(op4 / 1e8) if np.isfinite(op4) else None, ni4=round(ni4 / 1e8) if np.isfinite(ni4) else None,
@@ -92,6 +96,8 @@ for code, h in hist.items():
                      vs_peak=round(op4 / peak * 100) if np.isfinite(op4) and np.isfinite(peak) and peak > 0 else None,
                      og=round(og) if np.isfinite(og) else None,
                      opq=[round(x / 1e8) if np.isfinite(x) else None for x in opq],
+                     pos8=int(sum(1 for x in op8 if np.isfinite(x) and x > 0)), up8=int(sum(1 for x in yoy if x >= 0)),
+                     ttm_g=round((op4 / op4p - 1) * 100) if np.isfinite(op4) and np.isfinite(op4p) and op4p > 0 else None,
                      off_hi=round((cl / hi52 - 1) * 100), from_lo=round((cl / lo52 - 1) * 100),
                      r1y=round((cl / h["Close"].iloc[-250] - 1) * 100), rs=int(RS.get(code, np.nan)) if np.isfinite(RS.get(code, np.nan)) else None))
 df = pd.DataFrame(rows)
@@ -101,5 +107,12 @@ df.to_json(os.path.join(ROOT, "site", "data", "semi.json"), orient="records", fo
 pd.set_option("display.width", 250); pd.set_option("display.max_rows", 300); pd.set_option("display.max_colwidth", 40)
 cols = ["name", "mcap", "op4", "opm", "per", "por", "pbr", "peak_op", "vs_peak", "og", "opq", "off_hi", "from_lo", "r1y", "rs", "amt"]
 ok = df[(df.op4.fillna(0) > 0) & (df.amt >= 3) & (df.mcap >= 300)]
-print("== 전체 (흑자, 거래대금 3억↑, 시총 300억↑) PER 순")
-print(ok.sort_values("per", na_position="last")[cols].to_string(index=False))
+if not ALL:
+    print("== 전체 (흑자, 거래대금 3억↑, 시총 300억↑) PER 순")
+    print(ok.sort_values("per", na_position="last")[cols].to_string(index=False))
+else:
+    st = df[(df.pos8 == 8) & (df.up8 >= 5) & (df.ttm_g.fillna(-99) >= 5) & (df.opm.fillna(0) >= 6) & df.per.between(4, 15) & (df.pbr.fillna(9) <= 1.6)
+            & (df.mcap >= 3000) & (df.amt >= 8) & (df.off_hi <= -12)]
+    cols2 = ["name", "mcap", "op4", "ttm_g", "opm", "per", "pbr", "up8", "opq", "off_hi", "r1y", "rs", "amt"]
+    print(f"== 안정 실적주 후보 {len(st)}종목 (8분기 흑자, 전년대비 증가 5분기↑, 최근1년 영업익 +5%↑, 이익률 6%↑, PER 4~15, PBR 1.6↓, 시총 3천억↑, 고점대비 -12%↓)")
+    print(st.sort_values("per")[cols2].to_string(index=False))
