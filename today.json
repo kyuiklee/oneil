@@ -1,0 +1,1 @@
+{"trade_date":"2026-11-06","generated_at":"2026-11-06 17:17","status":"final","fund":true,"exp":true,"market":{"KOSPI":{"chg":-6.02,"m":"D","ma50":-20.8},"KOSDAQ":{"chg":-5.03,"m":"D","ma50":-20.1}},"config":{"top_n":10,"min_rs":70,"min_amount_eok":20,"stop_pct":7,"target_pct":20,"fee_pct":0.25},"cands":[]}
